@@ -188,6 +188,7 @@ class TestOdsay:
         svc = OdsayTravelTimeService(
             "dummy-key", self.params, client=FakeClient(*responses),
             min_interval=0.3, retry_delays=(1.0, 2.0), sleep=t.sleep, clock=t.clock,
+            quota_cooldown=300.0,
         )
         return svc, t
 
@@ -213,6 +214,31 @@ class TestOdsay:
             svc.get_minutes(self.origin, self.st)
         assert svc.http_calls == 3  # 최초 1회 + 재시도 2회
         assert t.sleeps == [1.0, 2.0]
+
+    def test_after_quota_is_exhausted_further_calls_fail_fast_without_http(self):
+        svc, t = self.service(QUOTA_BODY)
+        with pytest.raises(TravelTimeUnavailable):
+            svc.get_minutes(self.origin, self.st)
+        assert svc.http_calls == 3
+        sleeps_before = list(t.sleeps)
+        for _ in range(5):
+            with pytest.raises(TravelTimeUnavailable, match="호출 중단"):
+                svc.get_minutes(self.origin, self.st)
+        assert svc.http_calls == 3 and t.sleeps == sleeps_before  # 호출도 대기도 없다
+
+    def test_calls_resume_after_the_cooldown(self):
+        svc, t = self.service(QUOTA_BODY, QUOTA_BODY, QUOTA_BODY, OK_BODY)
+        with pytest.raises(TravelTimeUnavailable):
+            svc.get_minutes(self.origin, self.st)
+        t.now += 301
+        assert svc.get_minutes(self.origin, self.st) == 40.0
+        assert svc.http_calls == 4
+
+    def test_other_errors_do_not_trigger_the_cooldown(self):
+        svc, _ = self.service({"error": {"code": "500", "msg": "x"}}, OK_BODY)
+        with pytest.raises(TravelTimeUnavailable):
+            svc.get_minutes(self.origin, self.st)
+        assert svc.get_minutes(self.origin, self.st) == 40.0
 
     def test_other_errors_are_not_retried(self):
         svc, t = self.service({"error": {"code": "500", "msg": "서버 내부 오류"}})

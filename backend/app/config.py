@@ -39,6 +39,7 @@ class TravelConfig:
     odsay_timeout_seconds: float
     odsay_min_interval_seconds: float
     odsay_retry_delays_seconds: tuple[float, ...]
+    odsay_quota_cooldown_seconds: float
 
 
 def _read_yaml(name: str) -> dict:
@@ -63,6 +64,7 @@ def load_travel_config() -> TravelConfig:
         odsay_timeout_seconds=float(raw["odsay"]["timeout_seconds"]),
         odsay_min_interval_seconds=float(raw["odsay"]["min_interval_seconds"]),
         odsay_retry_delays_seconds=tuple(float(x) for x in raw["odsay"]["retry_delays_seconds"]),
+        odsay_quota_cooldown_seconds=float(raw["odsay"]["quota_cooldown_seconds"]),
     )
 
 

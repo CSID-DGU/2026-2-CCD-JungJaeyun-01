@@ -37,6 +37,7 @@ def get_travel_time_service() -> TravelTimeService:
         timeout=config.odsay_timeout_seconds,
         min_interval=config.odsay_min_interval_seconds,
         retry_delays=config.odsay_retry_delays_seconds,
+        quota_cooldown=config.odsay_quota_cooldown_seconds,
     )
     return CachedTravelTimeService(odsay, TravelTimeCache(settings.TRAVEL_CACHE_PATH))
 

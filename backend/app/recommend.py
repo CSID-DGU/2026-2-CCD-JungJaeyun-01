@@ -15,10 +15,13 @@ from app.schemas import (
     RegionRecommendMeta,
     RegionRecommendRequest,
     RegionRecommendResponse,
+    RouteLegOut,
+    RouteOut,
     StationOut,
     WeightsOut,
 )
 from app.scoring.region import RegionMetrics, RegionScore, score_regions
+from app.services.route import Route
 from app.services.travel_time import MockTravelTimeService, TravelTimeService, TravelTimeUnavailable
 from app.stations import Station, nearest_stations
 
@@ -38,6 +41,41 @@ def region_reason(rank: int, metrics: RegionMetrics, metric_ranks: dict[str, int
         return f"후보 {evaluated}곳 중 {', '.join(best)} 부문에서 가장 유리해 {rank}위로 선정했어요 ({detail})."
     ranks = " · ".join(f"{_METRIC_LABELS[a]} {metric_ranks[a]}위" for a in ("avg", "max", "std"))
     return f"{ranks}로 세 지표가 고르게 좋아 {rank}위로 선정했어요 ({detail})."
+
+
+def _route_out(route: Route) -> RouteOut:
+    return RouteOut(
+        total_minutes=route.total_minutes,
+        transfers=route.transfers,
+        legs=[
+            RouteLegOut(
+                kind=leg.kind, minutes=leg.minutes, distance_m=leg.distance_m, label=leg.label,
+                color=leg.color, from_name=leg.from_name, to_name=leg.to_name,
+                stop_count=leg.stop_count,
+                path=[LatLng(lat=c.lat, lng=c.lng) for c in leg.path],
+            )
+            for leg in route.legs
+        ],
+    )
+
+
+def _participant_travel(
+    service: TravelTimeService, name: str, origin: Coord, station: Station,
+    minutes: float, is_estimated: bool,
+) -> ParticipantTravelOut:
+    """참여자 한 명의 이동시간 + 지도용 경로. 가짜 경로는 만들지 않고, 없으면 이유를 남긴다."""
+    base = dict(name=name, minutes=round(minutes, 1), is_estimated=is_estimated)
+    if is_estimated:
+        return ParticipantTravelOut(**base, route_note="추정 경로 (실제 경로 조회 실패)")
+    try:
+        route = service.get_route(origin, station)  # 저장된 경로를 쓰며, 없을 때만 API를 한 번 부른다
+    except TravelTimeUnavailable as e:
+        return ParticipantTravelOut(**base, route_note=f"추정 경로 (경로 상세 조회 실패: {e})")
+    if route is None:
+        note = ("추정 경로 (mock 모드라 실제 경로 데이터가 없어요)" if service.source == "mock"
+                else "추정 경로 (경로 상세 정보를 받지 못했어요)")
+        return ParticipantTravelOut(**base, route_note=note)
+    return ParticipantTravelOut(**base, route=_route_out(route))
 
 
 def recommend_regions(
@@ -102,8 +140,8 @@ def recommend_regions(
             ),
             metric_ranks=MetricRanksOut(**metric_ranks),
             participants=[
-                ParticipantTravelOut(name=p.name, minutes=round(m, 1), is_estimated=est)
-                for p, m, est in zip(request.participants, r.minutes, estimated[r.region_id])
+                _participant_travel(service, p.name, origin, st, m, est)
+                for p, origin, m, est in zip(request.participants, origins, r.minutes, estimated[r.region_id])
             ],
         ))
 

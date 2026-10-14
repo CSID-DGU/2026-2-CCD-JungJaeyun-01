@@ -1,12 +1,15 @@
 import { PARTICIPANT_COLORS, PURPOSE_OPTIONS } from '../constants'
-import type { Place, RecommendResponse, Region } from '../types'
+import type { RouteSelection } from '../map/types'
+import type { ParticipantTravel, Place, RecommendResponse, Region, RouteLeg } from '../types'
 
 interface Props {
   data: RecommendResponse
   selectedRegion: number
   selectedPlaceId: string | null
+  routeSelection: RouteSelection
   onSelectRegion: (index: number) => void
   onSelectPlace: (id: string | null) => void
+  onSelectRoute: (selection: RouteSelection) => void
   onBack: () => void
 }
 
@@ -18,27 +21,101 @@ function shortCategory(category: string): string {
   return (parts.length ? parts : [category]).slice(0, 2).join(' · ')
 }
 
-function TravelBars({ region, maxMinutes }: { region: Region; maxMinutes: number }) {
+/** "도보 5분" / "6호선 합정→신당 18분" */
+function legText(leg: RouteLeg): string {
+  if (leg.kind === 'walk') return `도보 ${leg.minutes}분`
+  const name = leg.label ?? (leg.kind === 'bus' ? '버스' : '지하철')
+  const span = leg.from_name && leg.to_name ? ` ${leg.from_name}→${leg.to_name}` : ''
+  return `${name}${span} ${leg.minutes}분`
+}
+
+function RouteSummary({ travel, color }: { travel: ParticipantTravel; color: string }) {
+  if (!travel.route) {
+    // 실제 경로가 없으면 가짜 경로를 만들지 않고 이유를 알린다.
+    return (
+      <div className="route-summary">
+        <p className="route-note">{travel.route_note ?? '추정 경로'}</p>
+        <p className="route-hint">지도에는 출발지에서 도착역까지 점선 직선으로만 표시돼요.</p>
+      </div>
+    )
+  }
+  const { route } = travel
   return (
-    <ul className="bars" aria-label="참여자별 이동시간">
-      {region.participants.map((p, i) => (
-        <li key={`${p.name}-${i}`}>
-          <span className="bar-name">
-            <i className="dot" style={{ background: PARTICIPANT_COLORS[i] }} />
-            {p.name}
-          </span>
-          <span className="bar-track">
-            <span
-              className={`bar-fill${p.is_estimated ? ' estimated' : ''}`}
-              style={{ width: `${(p.minutes / maxMinutes) * 100}%`, background: PARTICIPANT_COLORS[i] }}
-            />
-          </span>
-          <span className="bar-value">
-            {fmt(p.minutes)}분{p.is_estimated && <em className="badge">추정</em>}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="route-summary">
+      <p className="route-total">
+        총 {route.total_minutes}분 · 환승 {route.transfers}회
+      </p>
+      <ol className="route-legs" aria-label="구간">
+        {route.legs.map((leg, i) => (
+          <li key={i} className={`leg ${leg.kind}`} style={{ borderColor: leg.kind === 'walk' ? color : (leg.color ?? color) }}>
+            {legText(leg)}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function TravelBars({
+  region,
+  maxMinutes,
+  routeSelection,
+  onSelectRoute,
+}: {
+  region: Region
+  maxMinutes: number
+  routeSelection: RouteSelection
+  onSelectRoute: (selection: RouteSelection) => void
+}) {
+  return (
+    <>
+      <div className="travel-head">
+        <h3>참여자별 이동시간</h3>
+        <button
+          type="button"
+          className="btn ghost"
+          aria-pressed={routeSelection === 'all'}
+          onClick={() => onSelectRoute(routeSelection === 'all' ? null : 'all')}
+        >
+          {routeSelection === 'all' ? '경로 숨기기' : '모두 보기'}
+        </button>
+      </div>
+      <ul className="bars" aria-label="참여자별 이동시간">
+        {region.participants.map((p, i) => {
+          const open = routeSelection === 'all' || routeSelection === i
+          return (
+            <li key={`${p.name}-${i}`} className={open ? 'open' : ''}>
+              <button
+                type="button"
+                className={`bar-row${open ? ' selected' : ''}`}
+                aria-expanded={open}
+                aria-label={`${p.name} 이동 경로 ${open ? '숨기기' : '보기'}`}
+                onClick={() => onSelectRoute(routeSelection === i ? null : i)}
+              >
+                <span className="bar-name">
+                  <i className="dot" style={{ background: PARTICIPANT_COLORS[i] }} />
+                  {p.name}
+                </span>
+                <span className="bar-track">
+                  <span
+                    className={`bar-fill${p.is_estimated ? ' estimated' : ''}`}
+                    style={{ width: `${(p.minutes / maxMinutes) * 100}%`, background: PARTICIPANT_COLORS[i] }}
+                  />
+                </span>
+                <span className="bar-value">
+                  {fmt(p.minutes)}분{p.is_estimated && <em className="badge">추정</em>}
+                </span>
+              </button>
+              <div className="route-detail" aria-hidden={!open}>
+                <div className="route-detail-inner">
+                  <RouteSummary travel={p} color={PARTICIPANT_COLORS[i]} />
+                </div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </>
   )
 }
 
@@ -77,7 +154,16 @@ function PlaceCard({ place, selected, onSelect }: { place: Place; selected: bool
   )
 }
 
-export default function ResultPanel({ data, selectedRegion, selectedPlaceId, onSelectRegion, onSelectPlace, onBack }: Props) {
+export default function ResultPanel({
+  data,
+  selectedRegion,
+  selectedPlaceId,
+  routeSelection,
+  onSelectRegion,
+  onSelectPlace,
+  onSelectRoute,
+  onBack,
+}: Props) {
   const region = data.regions[selectedRegion]
   const maxMinutes = Math.max(...data.regions.flatMap((r) => r.participants.map((p) => p.minutes)))
   const purposeLabel = PURPOSE_OPTIONS.find((o) => o.value === data.meta.purpose)?.label ?? ''
@@ -120,7 +206,12 @@ export default function ResultPanel({ data, selectedRegion, selectedPlaceId, onS
         {region.station.lines.length > 0 && <p className="lines">{region.station.lines.join(' · ')}</p>}
         <p className="reason">{region.reason}</p>
 
-        <TravelBars region={region} maxMinutes={maxMinutes} />
+        <TravelBars
+          region={region}
+          maxMinutes={maxMinutes}
+          routeSelection={routeSelection}
+          onSelectRoute={onSelectRoute}
+        />
 
         <dl className="metrics">
           <div>

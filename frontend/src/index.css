@@ -544,11 +544,115 @@ input.selected {
 }
 
 .bars li {
+  font-size: 13px;
+}
+
+.travel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.travel-head h3 {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* 참여자 행은 버튼: 클릭하면 그 사람의 이동 경로가 지도에 표시된다 */
+.bar-row {
   display: grid;
   grid-template-columns: 84px 1fr 72px;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bar-row:hover {
+  background: var(--primary-soft);
+}
+
+.bar-row.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.bar-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* 경로 요약: 아래로 부드럽게 펼쳐진다 */
+.route-detail {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.bars li.open .route-detail {
+  grid-template-rows: 1fr;
+}
+
+.route-detail-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.route-summary {
+  margin: 4px 0 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f7f8fa;
+  font-size: 12.5px;
+}
+
+.route-total {
+  font-weight: 700;
+}
+
+.route-legs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.route-legs .leg {
+  padding: 2px 8px;
+  border-left: 4px solid var(--muted);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.route-legs .leg.walk {
+  border-left-style: dotted;
+  color: var(--muted);
+}
+
+.route-legs .leg:not(:last-child)::after {
+  content: ' →';
+  color: var(--muted);
+}
+
+.route-note {
+  color: #8a5a00;
+  font-weight: 600;
+}
+
+.route-hint {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .bar-name {
@@ -798,4 +902,122 @@ input.selected {
 
 .iw a {
   color: var(--primary-dark);
+}
+
+/* ---------- 지도 연출 (이동이 끝난 뒤 한 번 실행되고, 마커가 다시 그려져도 반복되지 않는다) ---------- */
+.pin {
+  position: relative;
+}
+
+.pin.pre,
+.pin-transfer.pre,
+.route-follower.pre {
+  visibility: hidden;
+}
+
+/* 검색 완료: 1·2·3위 마커가 위에서 떨어지며 살짝 튕긴다 */
+@keyframes pin-drop {
+  0% { transform: translateY(-90px); opacity: 0; }
+  55% { transform: translateY(0); opacity: 1; }
+  72% { transform: translateY(-14px); }
+  88% { transform: translateY(0); }
+  94% { transform: translateY(-4px); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.pin.drop {
+  animation: pin-drop 560ms cubic-bezier(0.33, 0.9, 0.4, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* 지역 탭 전환: 선택된 지역 마커에서 원이 한 번 퍼진다 */
+@keyframes pin-pulse {
+  from { transform: scale(0.9); opacity: 0.9; }
+  to { transform: scale(2.8); opacity: 0; }
+}
+
+.pin.pulse::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 3px solid var(--primary);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: pin-pulse 850ms ease-out 1 both;
+}
+
+/* Top 5 장소 마커가 순서대로 팝업 */
+@keyframes pin-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.pin.pop {
+  animation: pin-pop 360ms cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* 장소 카드 클릭: 이동한 뒤 마커가 한 번 통통 튄다 */
+@keyframes pin-hop {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-18px); }
+  55% { transform: translateY(0); }
+  72% { transform: translateY(-7px); }
+  100% { transform: translateY(0); }
+}
+
+.pin.bounce {
+  animation: pin-hop 520ms ease-out 1;
+}
+
+@keyframes iw-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.iw {
+  animation: iw-in 280ms ease both;
+}
+
+/* 경로: 환승 지점 점, 따라가는 점, 추정 경로 표시 */
+.pin-transfer {
+  width: 12px;
+  height: 12px;
+  border: 3px solid var(--navy);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.route-follower {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.route-label {
+  padding: 2px 8px;
+  border: 1px solid #e2b24a;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #8a5a00;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* 모션 줄이기 설정이면 애니메이션 없이 즉시 표시 */
+@media (prefers-reduced-motion: reduce) {
+  .pin,
+  .pin::after,
+  .iw,
+  .route-detail,
+  .bar-row {
+    animation: none !important;
+    transition: none !important;
+  }
 }

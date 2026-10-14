@@ -8,7 +8,10 @@ from typing import Callable, Sequence
 import httpx2 as httpx
 
 from app.config import TravelParams
+from dataclasses import dataclass
+
 from app.geo import Coord, haversine_km
+from app.services.route import Route, parse_odsay_route, walking_route
 from app.stations import Station
 
 logger = logging.getLogger(__name__)
@@ -18,6 +21,12 @@ class TravelTimeUnavailable(Exception):
     """경로를 구하지 못했다. str(e)가 사용자에게 보여줄 사유다."""
 
 
+@dataclass(frozen=True)
+class TravelResult:
+    minutes: float
+    route: Route | None = None  # 경로 상세를 알 수 없으면 None
+
+
 class TravelTimeService(ABC):
     """출발지 → 역 대중교통 이동시간(분). 구하지 못하면 TravelTimeUnavailable."""
 
@@ -25,6 +34,14 @@ class TravelTimeService(ABC):
 
     @abstractmethod
     def get_minutes(self, origin: Coord, station: Station) -> float: ...
+
+    def fetch(self, origin: Coord, station: Station) -> TravelResult:
+        """이동시간과 경로 상세를 한 번에 구한다. 경로 상세를 모르는 구현은 route=None."""
+        return TravelResult(self.get_minutes(origin, station))
+
+    def get_route(self, origin: Coord, station: Station) -> Route | None:
+        """지도에 그릴 경로. 이미 받아 둔 데이터가 있으면 그것을 쓰고, 없으면 None."""
+        return None
 
 
 def walking_minutes(straight_km: float, params: TravelParams) -> float:
@@ -57,7 +74,9 @@ class OdsayTravelTimeService(TravelTimeService):
 
     - 호출은 항상 순차적이며, 실제 HTTP 요청 사이에 min_interval 초 이상 간격을 둔다.
     - 429(일일 한도/요청 과다)는 retry_delays 만큼 대기하며 재시도한다 (기본 1초, 2초 → 최대 2회).
-    - 그래도 실패하면 TravelTimeUnavailable. 호출자가 해당 역을 후보에서 뺀다.
+    - 그래도 실패하면 TravelTimeUnavailable. 호출자는 그 조합을 추정치로 대체한다.
+    - 429가 재시도 후에도 계속되면 한도가 찬 것으로 보고 quota_cooldown 초 동안은 HTTP 요청 없이 바로 실패시킨다
+      (실패할 게 뻔한 호출에 재시도 대기와 호출 횟수를 낭비하지 않기 위해).
     """
 
     source = "odsay"
@@ -77,6 +96,7 @@ class OdsayTravelTimeService(TravelTimeService):
         retry_delays: Sequence[float] = (1.0, 2.0),
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
+        quota_cooldown: float = 300.0,
     ):
         if not api_key:
             raise ValueError("ODSAY_API_KEY가 설정되지 않았습니다.")
@@ -88,15 +108,26 @@ class OdsayTravelTimeService(TravelTimeService):
         self._sleep = sleep
         self._clock = clock
         self._last_request_at: float | None = None
+        self._quota_cooldown = quota_cooldown
+        self._blocked_until: float | None = None
+        self._blocked_reason = ""
         self.http_calls = 0
 
     def get_minutes(self, origin: Coord, station: Station) -> float:
+        return self.fetch(origin, station).minutes
+
+    def get_route(self, origin: Coord, station: Station) -> Route | None:
+        return self.fetch(origin, station).route  # API를 다시 부른다. 캐시 래퍼가 필요할 때만 호출한다.
+
+    def fetch(self, origin: Coord, station: Station) -> TravelResult:
         body = self._request_with_retry(origin, station)
 
         if "error" in body:
             code, msg = _odsay_error(body["error"])
             if code == self.TOO_CLOSE_CODE:
-                return walking_minutes(haversine_km(origin, station.coord), self.params)
+                dist_km = haversine_km(origin, station.coord)
+                minutes = walking_minutes(dist_km, self.params)
+                return TravelResult(minutes, walking_route(origin, station.coord, minutes, dist_km * 1000))
             if code == self.NO_RESULT_CODE:
                 raise TravelTimeUnavailable("ODsay: 검색 결과 없음")
             raise TravelTimeUnavailable(f"ODsay 에러 {code} {msg}".strip())
@@ -104,9 +135,16 @@ class OdsayTravelTimeService(TravelTimeService):
         paths = body.get("result", {}).get("path") or []
         if not paths:
             raise TravelTimeUnavailable("ODsay: 경로 없음")
-        return float(min(p["info"]["totalTime"] for p in paths))
+        best = min(paths, key=lambda p: p["info"]["totalTime"])
+        # 이동시간과 같은 응답(최단 경로)에서 경로 상세를 뽑는다.
+        return TravelResult(float(best["info"]["totalTime"]),
+                            parse_odsay_route(best, origin, station.coord))
 
     def _request_with_retry(self, origin: Coord, station: Station) -> dict:
+        if self._blocked_until is not None:
+            if self._clock() < self._blocked_until:
+                raise TravelTimeUnavailable(self._blocked_reason)
+            self._blocked_until = None  # 대기 시간이 지났으니 다시 시도한다
         body: dict = {}
         for attempt in range(len(self._retry_delays) + 1):
             body = self._request(origin, station)
@@ -115,9 +153,10 @@ class OdsayTravelTimeService(TravelTimeService):
             if attempt < len(self._retry_delays):
                 self._sleep(self._retry_delays[attempt])
         _, msg = _odsay_error(body["error"])
-        raise TravelTimeUnavailable(
-            f"ODsay 429 {msg} (재시도 {len(self._retry_delays)}회 후에도 실패)".replace("  ", " ")
-        )
+        reason = f"ODsay 429 {msg} (재시도 {len(self._retry_delays)}회 후에도 실패)".replace("  ", " ")
+        self._blocked_until = self._clock() + self._quota_cooldown
+        self._blocked_reason = f"{reason}, 이후 {int(self._quota_cooldown)}초간 호출 중단"
+        raise TravelTimeUnavailable(reason)
 
     def _request(self, origin: Coord, station: Station) -> dict:
         self._throttle()

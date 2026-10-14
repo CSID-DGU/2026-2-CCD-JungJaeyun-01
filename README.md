@@ -107,7 +107,7 @@ python scripts/demo_recommend.py            # 홍대입구·잠실·노원 추�
 
 ## API
 
-- `POST /api/recommend` — 참여자 2~5명(이름, 출발지 좌표, 연령대)과 목적(`meal` | `cafe` | `drink`)을 받아 상위 3개 지역, 지역별 이동시간 지표, 지역별 장소 5곳을 반환
+- `POST /api/recommend` — 참여자 2~5명(이름, 출발지 좌표, 연령대)과 목적(`meal` | `cafe` | `drink`)을 받아 상위 3개 지역, 지역별 이동시간 지표와 참여자별 대중교통 경로(`route`), 지역별 장소 5곳을 반환
 - `POST /api/recommend/regions` — 지역 추천만
 - `GET /api/search/places?query=` — 출발지 자동완성 (카카오 키워드 검색 프록시)
 - `GET /api/diagnostics/kakao-map?origin=` — 지도 SDK 로드 실패 원인 진단 (화면의 안내 문구용)

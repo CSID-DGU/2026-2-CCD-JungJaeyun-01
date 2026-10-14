@@ -105,7 +105,9 @@ def test_estimated_values_are_not_cached(client, tmp_path):
     from app.stations import load_stations
     from app.config import load_region_config
 
-    class AlwaysFails:
+    from app.services.travel_time import TravelTimeService
+
+    class AlwaysFails(TravelTimeService):
         source = "odsay"
 
         def get_minutes(self, origin, station):

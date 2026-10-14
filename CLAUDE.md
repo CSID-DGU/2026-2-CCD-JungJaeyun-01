@@ -41,6 +41,10 @@ meetup-recommender/
 - mock 구현은 API 키 없이도 전체 흐름이 동작하도록 현실적인 고정 데이터를 반환한다.
 - 예외: 출발지 자동완성 `GET /api/search/places`(`services/place_lookup.py`)는 mock 없이 `USE_MOCK`과 관계없이 항상 실제 카카오 키워드 검색을 쓴다.
 - ODsay 조회가 재시도 후에도 실패한 출발지-역 조합은 후보에서 빼지 않고 mock의 거리 기반 추정치로 대체하며, 응답에 `is_estimated`로 표시한다 (추정치는 캐시하지 않는다).
+- 참여자 이동 경로(`subPath`/`passStopList`의 정류장 좌표)는 추천 요청 중 받은 ODsay 응답에서 파싱해 이동시간과 함께 SQLite 캐시(`route_json`)에 저장한다. 지도에서 경로를 보여줄 때는 저장된 값만 쓰고 추가 API 호출을 하지 않는다. 경로 저장 도입 전 캐시 행은 상위 지역에 한해 한 번만 채운다.
+- 실제 경로가 없는 참여자(추정치 대체, mock, 조회 실패)는 가짜 경로를 만들지 않는다. 응답의 `route`는 null, `route_note`에 이유를 담고, 화면은 출발지→도착역 점선 직선과 "추정 경로"로 표시한다.
+- ODsay가 재시도 후에도 429면 한도 초과로 보고 `travel.yaml`의 `quota_cooldown_seconds`(기본 300초) 동안 HTTP 호출 없이 바로 실패 처리한다.
+- 지도 연출은 App이 동작(검색/지역 탭/장소 카드/경로/전체 보기)마다 `motion` id를 올려 MapView가 이동 → 연출 순서로 한 번 실행한다. `prefers-reduced-motion`이면 즉시 이동·표시한다.
 - 카카오맵 SDK는 카카오 개발자 콘솔의 Web 플랫폼에 `http://localhost:5173`이 등록되어 있어야 로드된다.
 
 ### 점수 계산

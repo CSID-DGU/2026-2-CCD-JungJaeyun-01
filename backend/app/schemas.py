@@ -55,10 +55,30 @@ class MetricRanksOut(BaseModel):
     std: int
 
 
+class RouteLegOut(BaseModel):
+    kind: Literal["walk", "subway", "bus"]
+    minutes: int
+    distance_m: int
+    label: str | None        # "6호선", "472번"
+    color: str | None        # 노선 색 (없으면 화면에서 참여자 색 사용)
+    from_name: str | None
+    to_name: str | None
+    stop_count: int | None
+    path: list[LatLng]       # 지도에 그릴 좌표 (출발 → 도착)
+
+
+class RouteOut(BaseModel):
+    total_minutes: int
+    transfers: int
+    legs: list[RouteLegOut]
+
+
 class ParticipantTravelOut(BaseModel):
     name: str
     minutes: float
     is_estimated: bool = False  # True면 ODsay 조회에 실패해 거리 기반으로 추정한 값
+    route: RouteOut | None = None   # 실제 대중교통 경로. 없으면 route_note에 이유
+    route_note: str | None = None
 
 
 class RegionOut(BaseModel):

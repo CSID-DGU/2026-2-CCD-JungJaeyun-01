@@ -1,0 +1,59 @@
+# PlaceScore 설정
+# PlaceScore = Σ (가중치 × 항목 점수[0~1]).  평점/인기도를 구할 수 없으면 두 항목을 빼고 나머지 가중치를 재정규화한다.
+weights:
+  accessibility: 0.25   # 역에서의 거리
+  rating: 0.25          # 베이지안 평균 평점
+  popularity: 0.15      # log(리뷰 수)
+  purpose: 0.20         # 모임 목적 적합성
+  age: 0.15             # 연령대 적합성 (age_preferences.json, 임의값)
+
+search:
+  radius_m: 500         # 역 반경
+  max_results: 45       # 카카오 카테고리 검색 상한 (15개 × 3페이지)
+  cache_ttl_days: 7
+  top_n: 5              # 지역별 추천 장소 수 (평점 조회 대상도 이 5곳뿐)
+
+scoring:
+  prior_mean: 3.9       # 베이지안 평균의 사전 평균 평점
+  prior_weight: 30      # 사전 평점의 가상 리뷰 수 (리뷰가 이보다 적으면 사전 평균 쪽으로 끌려감)
+  rating_floor: 3.0     # 보정 평점이 이 값이면 0점, 5.0이면 1점
+  popularity_cap: 1000  # 리뷰 수가 이 값이면 인기도 1점 (log 스케일)
+  walk_m_per_min: 67    # 도보 속도 (약 4km/h), 선정 이유의 "도보 N분" 계산용
+
+# 모임 목적 → 카카오 카테고리 매핑과 목적 적합성 키워드.
+# 적합성은 category_name에 포함된 키워드 중 가장 높은 값, 없으면 default.
+purposes:
+  meal:                               # 식사
+    category_code: FD6
+    category_name_contains: null
+    fit_default: 0.6
+    fit_keywords:
+      한식: 1.0
+      일식: 1.0
+      양식: 1.0
+      중식: 1.0
+      아시아음식: 1.0
+      뷔페: 0.9
+      분식: 0.8
+      패스트푸드: 0.6
+      간식: 0.4
+      술집: 0.3
+  cafe:                               # 카페
+    category_code: CE7
+    category_name_contains: null
+    fit_default: 0.5
+    fit_keywords:
+      카페: 1.0
+      디저트: 1.0
+      제과: 0.7
+  drink:                              # 술자리: 음식점(FD6) 중 category_name에 "술집" 포함
+    category_code: FD6
+    category_name_contains: 술집
+    fit_default: 0.5
+    fit_keywords:
+      술집: 1.0
+
+google:
+  daily_limit: 100         # 하루 Google Places 호출 상한 (넘으면 평점 없이 진행)
+  cache_ttl_days: 30       # 평점 캐시 유효기간
+  match_radius_m: 150      # 카카오 장소 좌표 기준 검색 편향 반경

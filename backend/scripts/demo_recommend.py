@@ -1,11 +1,11 @@
-"""지역 추천 데모: 홍대입구·잠실·노원 3명 출발 → 상위 3개 지역 출력.
+"""전체 추천 데모: 홍대입구·잠실·노원 3명 출발, 식사 → 상위 3개 지역 + 지역별 장소 + API별 호출 횟수.
 
 실행 (backend 폴더에서):
     .venv\\Scripts\\python scripts/demo_recommend.py                  # .env의 USE_MOCK 값 사용
-    $env:USE_MOCK="false"; .venv\\Scripts\\python scripts/demo_recommend.py --repeat 2
+    $env:USE_MOCK="false"; .venv\\Scripts\\python scripts/demo_recommend.py
 
-USE_MOCK=false이면 ODsay를 실제로 호출한다. 캐시에 없는 조합 수가 --max-calls(기본 50)를
-넘으면 호출하기 전에 중단한다. --repeat 2는 같은 입력을 한 번 더 돌려 캐시 동작을 보여준다.
+USE_MOCK=false이면 ODsay·카카오·구글을 실제로 호출한다. ODsay는 캐시에 없는 조합이
+최악의 경우(전부 429 재시도) 쓰게 될 호출 수가 --max-calls(기본 50)를 넘으면 호출 전에 중단한다.
 """
 
 import argparse
@@ -15,13 +15,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import settings  # noqa: E402
-from app.config import load_region_config  # noqa: E402
+from app.config import load_place_config, load_region_config, load_travel_config  # noqa: E402
 from app.geo import Coord, centroid  # noqa: E402
-from app.recommend import recommend_regions  # noqa: E402
+from app.place_recommend import recommend_with_places  # noqa: E402
 from app.schemas import ParticipantIn, RegionRecommendRequest  # noqa: E402
-from app.services import get_travel_time_service  # noqa: E402
+from app.services import get_place_service, get_rating_service, get_travel_time_service  # noqa: E402
 from app.services.travel_cache import CachedTravelTimeService  # noqa: E402
-from app.services.travel_time import OdsayTravelTimeService  # noqa: E402
 from app.stations import load_stations, nearest_stations  # noqa: E402
 
 PARTICIPANTS = [
@@ -31,69 +30,68 @@ PARTICIPANTS = [
 ]
 
 
-def count_uncached_calls(service, request: RegionRecommendRequest) -> tuple[int, int]:
-    """(캐시에 없어 API를 호출해야 하는 조합 수, 전체 조합 수)"""
-    config = load_region_config()
+def odsay_uncached(service, request) -> tuple[int, int]:
+    """(캐시에 없는 출발지-역 조합 수, 전체 조합 수)"""
     origins = [Coord(p.lat, p.lng) for p in request.participants]
-    candidates = nearest_stations(load_stations(), centroid(origins), config.candidate_k)
+    candidates = nearest_stations(load_stations(), centroid(origins), load_region_config().candidate_k)
     total = len(candidates) * len(origins)
     if not isinstance(service, CachedTravelTimeService):
         return 0, total
-    uncached = sum(1 for st in candidates for o in origins if not service.is_cached(o, st))
-    return uncached, total
+    return sum(1 for st in candidates for o in origins if not service.is_cached(o, st)), total
 
 
-def print_result(response) -> None:
-    meta = response.meta
-    print(f"\n이동시간 소스: {meta.travel_source} | 후보 {meta.candidate_count}개 중 "
-          f"{meta.evaluated_count}개 평가 | 중심점 ({meta.centroid.lat}, {meta.centroid.lng})")
-    print(f"가중치: 평균 {meta.weights.avg} / 최대 {meta.weights.max} / 편차 {meta.weights.std}")
-    if meta.excluded_stations:
-        print(f"경로를 못 구해 제외된 역: {', '.join(meta.excluded_stations)}")
-    names = [p.name for p in response.regions[0].participants]
-    head = " ".join(f"{n:>5}" for n in names)
-    print(f"\n{'순위':<4}{'역':<10}{'점수':>7}  {head}  {'평균':>6}{'최대':>6}{'편차':>6}")
-    for r in response.regions:
-        times = " ".join(f"{p.minutes:>5.0f}" for p in r.participants)
-        m = r.metrics
-        print(f"{r.rank:<4}{r.station.name:<10}{r.score:>7.3f}  {times}  "
-              f"{m.avg_minutes:>6.1f}{m.max_minutes:>6.1f}{m.std_minutes:>6.1f}")
-    print("\n지표 순위(후보 중, 1=최상): " + " | ".join(
-        f"{r.station.name} 평균 {r.metric_ranks.avg}위·최대 {r.metric_ranks.max}위·편차 {r.metric_ranks.std}위"
-        for r in response.regions))
+def calls(service) -> int:
+    inner = getattr(service, "inner", service)
+    return getattr(inner, "http_calls", 0)
 
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--repeat", type=int, default=1, help="같은 입력을 N번 실행(캐시 확인용)")
-    parser.add_argument("--max-calls", type=int, default=50, help="실제 API 호출 상한")
+    parser.add_argument("--purpose", default="meal", choices=["meal", "cafe", "drink"])
+    parser.add_argument("--max-calls", type=int, default=50, help="ODsay 최악 호출 수 상한")
     args = parser.parse_args()
 
-    service = get_travel_time_service()
-    request = RegionRecommendRequest(participants=PARTICIPANTS, purpose="meal")
-    config = load_region_config()
-    print(f"USE_MOCK={settings.USE_MOCK} → {type(service).__name__}")
+    travel, places, ratings = get_travel_time_service(), get_place_service(), get_rating_service()
+    request = RegionRecommendRequest(participants=PARTICIPANTS, purpose=args.purpose)
+    print(f"USE_MOCK={settings.USE_MOCK} | 이동시간 {type(travel).__name__} | 장소 {type(places).__name__} "
+          f"| 평점 {type(ratings).__name__}")
 
-    for run in range(1, args.repeat + 1):
-        uncached, total = count_uncached_calls(service, request)
-        print(f"\n===== 실행 {run}/{args.repeat} =====")
-        print(f"조합 {total}건 (참여자 {len(PARTICIPANTS)}명 × 후보 {config.candidate_k}개), "
-              f"캐시 없음 → 실제 호출 예정 {uncached}건")
-        if uncached > args.max_calls:
-            sys.exit(f"중단: 호출 예정 {uncached}건이 상한 {args.max_calls}건을 넘습니다. 실행하지 않았습니다.")
+    uncached, total = odsay_uncached(travel, request)
+    attempts = 1 + len(load_travel_config().odsay_retry_delays_seconds)
+    worst = uncached * attempts
+    print(f"ODsay: 조합 {total}건 중 캐시에 없음 {uncached}건 → 최악의 경우 호출 {worst}건")
+    if worst > args.max_calls:
+        sys.exit(f"중단: 최악 호출 {worst}건이 상한 {args.max_calls}건을 넘습니다. 실행하지 않았습니다.")
 
-        hits_before = getattr(service, "hits", 0)
-        misses_before = getattr(service, "misses", 0)
-        response = recommend_regions(request, service, load_stations(), config)
-        print_result(response)
+    response = recommend_with_places(request, travel, places, ratings, load_stations(),
+                                     load_region_config(), load_place_config())
+    meta = response.meta
 
-        if isinstance(service, CachedTravelTimeService):
-            inner = service.inner
-            print(f"\n[캐시] 이번 실행 적중 {service.hits - hits_before}건 / 미적중 {service.misses - misses_before}건")
-            if isinstance(inner, OdsayTravelTimeService):
-                print(f"[ODsay] 누적 실제 호출 {inner.call_count}건 | "
-                      f"캐시 DB 저장 {service.cache.count('odsay')}건")
+    print(f"\n가중치(지역) 평균 {meta.weights.avg}/최대 {meta.weights.max}/편차 {meta.weights.std} | "
+          f"후보 {meta.candidate_count}개 중 {meta.evaluated_count}개 평가")
+    for ex in meta.excluded_stations:
+        print(f"  제외: {ex.station} ← {ex.reason}")
+    print(f"연령대 선호도: source={meta.age_preference.source} (임의값 {meta.age_preference.is_assumed})")
+
+    for r in response.regions:
+        m = r.metrics
+        times = "/".join(f"{p.minutes:.0f}" for p in r.participants)
+        print(f"\n{r.rank}위 {r.station.name} 점수 {r.score:.3f} | 이동 {times}분 "
+              f"(평균 {m.avg_minutes} 최대 {m.max_minutes} 편차 {m.std_minutes})")
+        for p in r.places:
+            print(f"   {p.rank}. {p.name} [{p.score:.3f}] {p.reason}")
+    for w in meta.place_warnings:
+        print(f"경고: {w}")
+
+    g_used = ""
+    if hasattr(ratings, "cache"):
+        from datetime import date
+        g_used = f" (오늘 누적 {ratings.cache.usage(date.today().isoformat())}/{load_place_config().google.daily_limit})"
+    print("\n===== API별 실제 호출 횟수 =====")
+    print(f"ODsay : {calls(travel)}건")
+    print(f"카카오 : {calls(places)}건 (캐시 적중 {getattr(places, 'hits', 0)} / 미적중 {getattr(places, 'misses', 0)})")
+    print(f"구글   : {calls(ratings)}건{g_used} | 평점 조회 결과 {meta.ratings.status_counts}")
 
 
 if __name__ == "__main__":

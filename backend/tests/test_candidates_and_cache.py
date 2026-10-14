@@ -7,6 +7,7 @@ from app.services.travel_time import (
     MockTravelTimeService,
     OdsayTravelTimeService,
     TravelTimeService,
+    TravelTimeUnavailable,
     estimate_transit_minutes,
 )
 from app.stations import Station, load_stations, nearest_stations
@@ -78,13 +79,15 @@ class TestMockTravelTime:
 class CountingService(TravelTimeService):
     source = "counting"
 
-    def __init__(self, result=25.0):
+    def __init__(self, fail=False):
         self.calls = 0
-        self.result = result
+        self.fail = fail
 
     def get_minutes(self, origin, station):
         self.calls += 1
-        return self.result
+        if self.fail:
+            raise TravelTimeUnavailable("테스트 실패")
+        return 25.0
 
 
 class TestCache:
@@ -126,11 +129,12 @@ class TestCache:
         assert inner.calls == 0
 
     def test_failures_are_not_cached(self, tmp_path):
-        inner = CountingService(result=None)
+        inner = CountingService(fail=True)
         cached = CachedTravelTimeService(inner, TravelTimeCache(tmp_path / "c.sqlite3"))
         st, origin = station("a", 37.5, 127.0), Coord(37.5569, 126.9238)
-        assert cached.get_minutes(origin, st) is None
-        cached.get_minutes(origin, st)
+        for _ in range(2):
+            with pytest.raises(TravelTimeUnavailable):
+                cached.get_minutes(origin, st)
         assert inner.calls == 2
 
 
@@ -146,40 +150,93 @@ class FakeResponse:
 
 
 class FakeClient:
-    def __init__(self, body):
-        self.body, self.requests = body, []
+    """응답을 순서대로 돌려주고, 마지막 응답은 반복한다."""
+
+    def __init__(self, *responses):
+        self.responses = [r if isinstance(r, FakeResponse) else FakeResponse(r) for r in responses]
+        self.requests = []
 
     def get(self, url, params=None):
         self.requests.append(params)
-        return FakeResponse(self.body)
+        return self.responses[min(len(self.requests) - 1, len(self.responses) - 1)]
 
 
-class TestOdsayParsing:
+class FakeTime:
+    """sleep을 기록하고 시계를 그만큼 앞으로 보낸다 (실제로 기다리지 않음)."""
+
+    def __init__(self):
+        self.now, self.sleeps = 100.0, []
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+    def clock(self):
+        return self.now
+
+
+OK_BODY = {"result": {"path": [{"info": {"totalTime": 40}}]}}
+QUOTA_BODY = {"error": {"code": "429", "msg": "Daily quota exceeded"}}
+
+
+class TestOdsay:
     params = load_travel_config().mock
     origin, st = Coord(37.5569, 126.9238), station("a", 37.4981, 127.0280)
 
-    def service(self, body):
-        return OdsayTravelTimeService("dummy-key", self.params, client=FakeClient(body))
+    def service(self, *responses):
+        t = FakeTime()
+        svc = OdsayTravelTimeService(
+            "dummy-key", self.params, client=FakeClient(*responses),
+            min_interval=0.3, retry_delays=(1.0, 2.0), sleep=t.sleep, clock=t.clock,
+        )
+        return svc, t
 
     def test_takes_fastest_path(self):
         body = {"result": {"path": [{"info": {"totalTime": 52}}, {"info": {"totalTime": 40}}]}}
-        assert self.service(body).get_minutes(self.origin, self.st) == 40.0
+        svc, _ = self.service(body)
+        assert svc.get_minutes(self.origin, self.st) == 40.0
 
-    def test_error_returns_none(self):
-        body = {"error": {"code": "500", "msg": "서버 내부 오류"}}
-        assert self.service(body).get_minutes(self.origin, self.st) is None
+    def test_429_is_retried_with_1s_then_2s_wait(self):
+        svc, t = self.service(QUOTA_BODY, QUOTA_BODY, OK_BODY)
+        assert svc.get_minutes(self.origin, self.st) == 40.0
+        assert svc.http_calls == 3
+        assert t.sleeps == [1.0, 2.0]
+
+    def test_http_status_429_is_also_retried(self):
+        svc, t = self.service(FakeResponse({}, status=429), OK_BODY)
+        assert svc.get_minutes(self.origin, self.st) == 40.0
+        assert t.sleeps == [1.0]
+
+    def test_gives_up_after_two_retries_with_reason(self):
+        svc, t = self.service(QUOTA_BODY)
+        with pytest.raises(TravelTimeUnavailable, match="429.*Daily quota exceeded.*2회"):
+            svc.get_minutes(self.origin, self.st)
+        assert svc.http_calls == 3  # 최초 1회 + 재시도 2회
+        assert t.sleeps == [1.0, 2.0]
+
+    def test_other_errors_are_not_retried(self):
+        svc, t = self.service({"error": {"code": "500", "msg": "서버 내부 오류"}})
+        with pytest.raises(TravelTimeUnavailable, match="500"):
+            svc.get_minutes(self.origin, self.st)
+        assert svc.http_calls == 1 and t.sleeps == []
+
+    def test_waits_at_least_0_3s_between_requests(self):
+        svc, t = self.service(OK_BODY)
+        svc.get_minutes(self.origin, self.st)
+        svc.get_minutes(self.origin, self.st)
+        svc.get_minutes(self.origin, self.st)
+        assert t.sleeps == pytest.approx([0.3, 0.3])  # 첫 호출 전에는 대기 없음
 
     def test_too_close_falls_back_to_walking(self):
-        body = {"error": [{"code": "-98", "message": "출, 도착지가 700m 이내입니다."}]}
-        minutes = self.service(body).get_minutes(self.origin, self.st)
-        assert minutes is not None and minutes > 0
+        svc, _ = self.service({"error": [{"code": "-98", "message": "출, 도착지가 700m 이내입니다."}]})
+        assert svc.get_minutes(self.origin, self.st) > 0
 
     def test_requires_api_key(self):
         with pytest.raises(ValueError):
             OdsayTravelTimeService("", self.params)
 
     def test_request_uses_lng_as_x(self):
-        svc = self.service({"result": {"path": [{"info": {"totalTime": 10}}]}})
+        svc, _ = self.service(OK_BODY)
         svc.get_minutes(self.origin, self.st)
         sent = svc._client.requests[0]
         assert (sent["SX"], sent["SY"]) == (self.origin.lng, self.origin.lat)

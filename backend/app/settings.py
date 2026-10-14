@@ -22,3 +22,6 @@ GOOGLE_PLACES_API_KEY: str = os.getenv("GOOGLE_PLACES_API_KEY", "")
 
 # 이동시간 캐시(SQLite). .gitignore의 *.sqlite3 규칙으로 커밋되지 않는다.
 TRAVEL_CACHE_PATH: Path = ROOT_DIR / "backend" / "data" / "travel_cache.sqlite3"
+
+# 장소 검색 결과(카카오), 평점(구글), 구글 일일 호출 수 캐시(SQLite).
+PLACES_CACHE_PATH: Path = ROOT_DIR / "backend" / "data" / "places_cache.sqlite3"

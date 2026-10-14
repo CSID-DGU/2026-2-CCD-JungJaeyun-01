@@ -65,7 +65,7 @@ class TravelTimeCache:
 
 
 class CachedTravelTimeService(TravelTimeService):
-    """다른 TravelTimeService를 감싸 결과를 캐시한다. 실패(None)는 캐시하지 않는다."""
+    """다른 TravelTimeService를 감싸 결과를 캐시한다. 실패는 캐시하지 않는다."""
 
     def __init__(self, inner: TravelTimeService, cache: TravelTimeCache):
         self.inner = inner
@@ -77,13 +77,12 @@ class CachedTravelTimeService(TravelTimeService):
     def is_cached(self, origin: Coord, station: Station) -> bool:
         return self.cache.get(self.source, origin, station.id) is not None
 
-    def get_minutes(self, origin: Coord, station: Station) -> float | None:
+    def get_minutes(self, origin: Coord, station: Station) -> float:
         cached = self.cache.get(self.source, origin, station.id)
         if cached is not None:
             self.hits += 1
             return cached
         self.misses += 1
-        minutes = self.inner.get_minutes(origin, station)
-        if minutes is not None:
-            self.cache.set(self.source, origin, station.id, minutes)
+        minutes = self.inner.get_minutes(origin, station)  # 실패(TravelTimeUnavailable)는 전파 → 캐시 안 함
+        self.cache.set(self.source, origin, station.id, minutes)
         return minutes

@@ -5,6 +5,7 @@ from typing import Sequence
 from app.config import RegionConfig
 from app.geo import Coord, centroid
 from app.schemas import (
+    ExcludedStationOut,
     LatLng,
     MetricRanksOut,
     MetricsOut,
@@ -18,7 +19,7 @@ from app.schemas import (
     WeightsOut,
 )
 from app.scoring.region import RegionScore, score_regions
-from app.services.travel_time import TravelTimeService
+from app.services.travel_time import TravelTimeService, TravelTimeUnavailable
 from app.stations import Station, nearest_stations
 
 
@@ -42,18 +43,21 @@ def recommend_regions(
     candidates = nearest_stations(stations, center, config.candidate_k)
 
     travel_minutes: dict[str, list[float]] = {}
-    excluded: list[str] = []
+    excluded: list[ExcludedStationOut] = []
     for station in candidates:
         times: list[float] = []
-        for origin in origins:
-            minutes = service.get_minutes(origin, station)
-            if minutes is None:
-                break  # 한 명이라도 경로가 없으면 남은 호출을 아끼고 후보에서 제외
-            times.append(minutes)
-        if len(times) == len(origins):
+        reason: str | None = None
+        for participant, origin in zip(request.participants, origins):
+            try:
+                times.append(service.get_minutes(origin, station))
+            except TravelTimeUnavailable as e:
+                # 한 명이라도 경로가 없으면 남은 호출을 아끼고 이 역을 후보에서 뺀다.
+                reason = f"{participant.name} 출발: {e}"
+                break
+        if reason is None:
             travel_minutes[station.id] = times
         else:
-            excluded.append(station.name)
+            excluded.append(ExcludedStationOut(station=station.name, reason=reason))
 
     if not travel_minutes:
         raise NoReachableRegionError("이동시간을 계산할 수 있는 후보 지역이 없습니다.")

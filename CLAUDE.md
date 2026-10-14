@@ -12,8 +12,8 @@ meetup-recommender/
 │   │   ├── settings.py # 환경변수 로딩 (루트 .env)
 │   │   ├── services/   # 외부 API 인터페이스 + mock/실제 구현
 │   │   └── scoring/    # RegionScore, PlaceScore 순수 함수
-│   ├── config/         # 가중치·파라미터 yaml (region.yaml, travel.yaml)
-│   ├── data/           # stations.json (후보 역 좌표), travel_cache.sqlite3 (gitignore)
+│   ├── config/         # region.yaml, travel.yaml, place.yaml, age_preferences.json
+│   ├── data/           # stations.json (후보 역 좌표), *.sqlite3 캐시 (gitignore)
 │   ├── scripts/        # test_apis.py, fetch_stations.py, demo_recommend.py
 │   ├── tests/          # pytest
 │   └── requirements.txt
@@ -46,7 +46,8 @@ meetup-recommender/
   - PlaceScore: 접근성, 평점, 리뷰 수, 모임 목적 적합성, 연령대 선호도
 - 점수 계산 함수(`backend/app/scoring/`)는 **순수 함수**로 작성한다: 입력(이동시간, 장소 정보, 가중치)만 받아 결과를 반환하고, 외부 API 호출·파일 읽기·전역 상태 변경을 하지 않는다. 가중치도 인자로 전달받는다.
 - 점수 계산 함수를 추가·수정할 때는 `backend/tests/`에 **pytest 테스트를 함께 작성**한다 (정규화 경계값, 동점, 참여자 2명/5명 등).
-- 연령대 가중치는 실제 데이터 기반인지 사전 정의 가중치인지 구분할 수 있게 구현한다.
+- 연령대 가중치는 실제 데이터 기반인지 사전 정의 가중치인지 구분할 수 있게 구현한다. 현재 `config/age_preferences.json`은 `"source": "assumed"`(임의값)이며 API 응답에도 `age_preference.is_assumed`로 표시된다.
+- 구글 평점을 못 받으면(키 없음/실패/일일 상한 초과) 평점·인기도 항목을 빼고 나머지 가중치를 재정규화한다. 구글은 지역별 상위 5곳만 조회하고, 캐시와 하루 호출 상한(`place.yaml`의 `google.daily_limit`)을 지킨다.
 
 ## 실행 방법
 
@@ -65,9 +66,9 @@ uvicorn app.main:app --reload --port 8000
 - 헬스체크: http://localhost:8000/health
 - API 문서: http://localhost:8000/docs
 - 테스트: `cd backend && pytest`
-- 지역 추천 호출: `POST /api/recommend/regions` (참여자 2~5명 + 모임 목적)
+- 추천 호출: `POST /api/recommend` (상위 3개 지역 + 지역별 장소 5곳), 지역만: `POST /api/recommend/regions`
 - 후보 역 좌표 재생성(카카오 키워드 검색): `python scripts/fetch_stations.py`
-- 지역 추천 데모: `python scripts/demo_recommend.py` (`USE_MOCK=false`면 ODsay 실제 호출, 캐시 미적중 50건 초과 시 중단)
+- 추천 데모: `python scripts/demo_recommend.py` (`USE_MOCK=false`면 ODsay·카카오·구글 실제 호출, API별 호출 수 출력. ODsay 최악 호출이 50건 초과면 중단)
 
 ### 프론트엔드 (http://localhost:5173)
 

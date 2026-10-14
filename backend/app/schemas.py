@@ -76,12 +76,17 @@ class WeightsOut(BaseModel):
     std: float
 
 
+class ExcludedStationOut(BaseModel):
+    station: str
+    reason: str
+
+
 class RegionRecommendMeta(BaseModel):
     purpose: Purpose
     centroid: LatLng
     candidate_count: int
     evaluated_count: int
-    excluded_stations: list[str]
+    excluded_stations: list[ExcludedStationOut]
     weights: WeightsOut
     travel_source: str
 
@@ -89,3 +94,72 @@ class RegionRecommendMeta(BaseModel):
 class RegionRecommendResponse(BaseModel):
     regions: list[RegionOut]
     meta: RegionRecommendMeta
+
+
+# --------------------------------------------------------------------------- 장소 추천
+class PlaceComponentsOut(BaseModel):
+    """PlaceScore 항목별 점수(0~1). 평점 데이터가 없으면 rating·popularity는 null."""
+
+    accessibility: float
+    rating: float | None
+    popularity: float | None
+    purpose: float
+    age: float
+
+
+class PlaceWeightsOut(BaseModel):
+    accessibility: float
+    rating: float
+    popularity: float
+    purpose: float
+    age: float
+
+
+class PlaceOut(BaseModel):
+    rank: int
+    id: str
+    name: str
+    category: str
+    address: str
+    lat: float
+    lng: float
+    distance_m: float
+    url: str
+    phone: str
+    score: float
+    components: PlaceComponentsOut
+    weights_used: dict[str, float]  # 재정규화 후 실제 적용된 가중치
+    rating: float | None
+    review_count: int | None
+    rating_status: str
+    age_fit_assumed: bool           # 연령대 적합성이 임의값 기반인지
+    reason: str
+
+
+class RegionWithPlacesOut(RegionOut):
+    places: list[PlaceOut]
+
+
+class AgePreferenceMeta(BaseModel):
+    source: str
+    is_assumed: bool
+    note: str
+
+
+class RatingMeta(BaseModel):
+    source: str
+    requested: int
+    status_counts: dict[str, int]
+
+
+class RecommendMeta(RegionRecommendMeta):
+    place_source: str
+    place_weights: PlaceWeightsOut
+    age_preference: AgePreferenceMeta
+    ratings: RatingMeta
+    place_warnings: list[str]
+
+
+class RecommendResponse(BaseModel):
+    regions: list[RegionWithPlacesOut]
+    meta: RecommendMeta

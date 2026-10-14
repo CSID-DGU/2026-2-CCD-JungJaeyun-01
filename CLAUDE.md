@@ -12,7 +12,9 @@ meetup-recommender/
 │   │   ├── settings.py # 환경변수 로딩 (루트 .env)
 │   │   ├── services/   # 외부 API 인터페이스 + mock/실제 구현
 │   │   └── scoring/    # RegionScore, PlaceScore 순수 함수
-│   ├── config/         # 점수 가중치 설정 파일
+│   ├── config/         # 가중치·파라미터 yaml (region.yaml, travel.yaml)
+│   ├── data/           # stations.json (후보 역 좌표), travel_cache.sqlite3 (gitignore)
+│   ├── scripts/        # test_apis.py, fetch_stations.py, demo_recommend.py
 │   ├── tests/          # pytest
 │   └── requirements.txt
 ├── frontend/           # React + Vite + TypeScript
@@ -63,6 +65,9 @@ uvicorn app.main:app --reload --port 8000
 - 헬스체크: http://localhost:8000/health
 - API 문서: http://localhost:8000/docs
 - 테스트: `cd backend && pytest`
+- 지역 추천 호출: `POST /api/recommend/regions` (참여자 2~5명 + 모임 목적)
+- 후보 역 좌표 재생성(카카오 키워드 검색): `python scripts/fetch_stations.py`
+- 지역 추천 데모: `python scripts/demo_recommend.py` (`USE_MOCK=false`면 ODsay 실제 호출, 캐시 미적중 50건 초과 시 중단)
 
 ### 프론트엔드 (http://localhost:5173)
 

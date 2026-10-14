@@ -55,30 +55,11 @@ class MetricRanksOut(BaseModel):
     std: int
 
 
-class RouteLegOut(BaseModel):
-    kind: Literal["walk", "subway", "bus"]
-    minutes: int
-    distance_m: int
-    label: str | None        # "6호선", "472번"
-    color: str | None        # 노선 색 (없으면 화면에서 참여자 색 사용)
-    from_name: str | None
-    to_name: str | None
-    stop_count: int | None
-    path: list[LatLng]       # 지도에 그릴 좌표 (출발 → 도착)
-
-
-class RouteOut(BaseModel):
-    total_minutes: int
-    transfers: int
-    legs: list[RouteLegOut]
-
-
 class ParticipantTravelOut(BaseModel):
     name: str
     minutes: float
-    is_estimated: bool = False  # True면 ODsay 조회에 실패해 거리 기반으로 추정한 값
-    route: RouteOut | None = None   # 실제 대중교통 경로. 없으면 route_note에 이유
-    route_note: str | None = None
+    is_estimated: bool = False   # True면 경로 API 확인에 실패해 1단계 추정값을 쓴 것 ("추정" 표시)
+    estimate_minutes: float | None = None  # 1단계 추정값 (참고용)
 
 
 class RegionOut(BaseModel):
@@ -98,12 +79,28 @@ class WeightsOut(BaseModel):
     std: float
 
 
-class EstimatedTravelOut(BaseModel):
-    """ODsay 조회에 실패해 추정치로 대체한 출발지-역 조합과 실패 사유."""
-
-    station: str
+class AccuracyPairOut(BaseModel):
     participant: str
-    reason: str
+    station: str
+    estimate_minutes: float
+    actual_minutes: float
+    diff_minutes: float      # 추정 - 실제
+
+
+class AccuracyOut(BaseModel):
+    """1단계 추정과 2단계 실제값의 차이 (추정 정확도 확인용)."""
+
+    mae_minutes: float
+    bias_minutes: float
+    pairs: list[AccuracyPairOut]
+
+
+class Phase2Out(BaseModel):
+    status: Literal["ok", "failed", "skipped"]
+    reason: str | None
+    provider: str | None
+    api_calls: int
+    cache_hits: int
 
 
 class RegionRecommendMeta(BaseModel):
@@ -111,9 +108,10 @@ class RegionRecommendMeta(BaseModel):
     centroid: LatLng
     candidate_count: int
     evaluated_count: int
-    estimated_travel: list[EstimatedTravelOut]
     weights: WeightsOut
-    travel_source: str
+    travel_source: str       # 상위 3곳 이동시간의 출처: "google" | "odsay" | "estimate"
+    phase2: Phase2Out
+    estimate_accuracy: AccuracyOut | None
 
 
 class RegionRecommendResponse(BaseModel):
@@ -188,3 +186,34 @@ class RecommendMeta(RegionRecommendMeta):
 class RecommendResponse(BaseModel):
     regions: list[RegionWithPlacesOut]
     meta: RecommendMeta
+
+
+# --------------------------------------------------------------------------- 상세 경로 (공통 스키마)
+class RouteSegmentOut(BaseModel):
+    mode: Literal["WALK", "SUBWAY", "BUS"]
+    lineName: str | None
+    lineColor: str | None
+    from_: str | None = Field(default=None, alias="from")
+    to: str | None
+    minutes: float
+    path: list[list[float]]   # [[lat, lng], ...]
+
+    model_config = {"populate_by_name": True}
+
+
+class RouteOut(BaseModel):
+    totalMinutes: int
+    transfers: int
+    segments: list[RouteSegmentOut]
+    source: Literal["google", "estimate", "odsay"]
+
+
+class RouteRequest(BaseModel):
+    lat: float = Field(ge=33.0, le=39.0)
+    lng: float = Field(ge=124.0, le=132.0)
+    station_id: str
+
+
+class RouteResponse(BaseModel):
+    route: RouteOut
+    note: str | None = None   # 추정 경로일 때 이유 등

@@ -1,12 +1,14 @@
 import { PARTICIPANT_COLORS, PURPOSE_OPTIONS } from '../constants'
 import type { RouteSelection } from '../map/types'
-import type { ParticipantTravel, Place, RecommendResponse, Region, RouteLeg } from '../types'
+import { routeKey, type RouteEntries, type RouteEntry } from '../routes'
+import type { Place, RecommendResponse, Region, RouteSegment } from '../types'
 
 interface Props {
   data: RecommendResponse
   selectedRegion: number
   selectedPlaceId: string | null
   routeSelection: RouteSelection
+  routes: RouteEntries
   onSelectRegion: (index: number) => void
   onSelectPlace: (id: string | null) => void
   onSelectRoute: (selection: RouteSelection) => void
@@ -21,37 +23,54 @@ function shortCategory(category: string): string {
   return (parts.length ? parts : [category]).slice(0, 2).join(' · ')
 }
 
-/** "도보 5분" / "6호선 합정→신당 18분" */
-function legText(leg: RouteLeg): string {
-  if (leg.kind === 'walk') return `도보 ${leg.minutes}분`
-  const name = leg.label ?? (leg.kind === 'bus' ? '버스' : '지하철')
-  const span = leg.from_name && leg.to_name ? ` ${leg.from_name}→${leg.to_name}` : ''
-  return `${name}${span} ${leg.minutes}분`
+/** "도보 5분" / "2호선 합정→을지로3가 16분" (0.x분 구간도 최소 1분으로 보여준다) */
+function segmentText(seg: RouteSegment): string {
+  const minutes = Math.max(1, Math.round(seg.minutes))
+  if (seg.mode === 'WALK') return `도보 ${minutes}분`
+  const name = seg.lineName ?? (seg.mode === 'BUS' ? '버스' : '지하철')
+  const span = seg.from && seg.to ? ` ${seg.from}→${seg.to}` : ''
+  return `${name}${span} ${minutes}분`
 }
 
-function RouteSummary({ travel, color }: { travel: ParticipantTravel; color: string }) {
-  if (!travel.route) {
-    // 실제 경로가 없으면 가짜 경로를 만들지 않고 이유를 알린다.
+function RouteSummary({ entry, color }: { entry: RouteEntry | undefined; color: string }) {
+  if (!entry) return null // 아직 요청 전 (닫힌 행)
+  if (entry.status === 'loading') {
     return (
       <div className="route-summary">
-        <p className="route-note">{travel.route_note ?? '추정 경로'}</p>
-        <p className="route-hint">지도에는 출발지에서 도착역까지 점선 직선으로만 표시돼요.</p>
+        <p className="route-loading">
+          <span className="spinner small" /> 경로를 불러오는 중…
+        </p>
       </div>
     )
   }
-  const { route } = travel
+  if (entry.status === 'error') {
+    return (
+      <div className="route-summary">
+        <p className="route-note">경로를 불러오지 못했어요</p>
+        <p className="route-hint">{entry.message}</p>
+      </div>
+    )
+  }
+  const { route, note } = entry
+  const estimated = route.source === 'estimate'
   return (
     <div className="route-summary">
       <p className="route-total">
-        총 {route.total_minutes}분 · 환승 {route.transfers}회
+        총 {route.totalMinutes}분 · 환승 {route.transfers}회
+        <em className={`badge${estimated ? '' : ' source'}`}>{estimated ? '추정 경로' : route.source === 'google' ? 'Google 실제 경로' : 'ODsay 경로'}</em>
       </p>
       <ol className="route-legs" aria-label="구간">
-        {route.legs.map((leg, i) => (
-          <li key={i} className={`leg ${leg.kind}`} style={{ borderColor: leg.kind === 'walk' ? color : (leg.color ?? color) }}>
-            {legText(leg)}
+        {route.segments.map((seg, i) => (
+          <li
+            key={i}
+            className={`leg ${seg.mode.toLowerCase()}`}
+            style={{ borderColor: seg.mode === 'WALK' ? color : (seg.lineColor ?? color) }}
+          >
+            {segmentText(seg)}
           </li>
         ))}
       </ol>
+      {note && <p className="route-hint">{note}</p>}
     </div>
   )
 }
@@ -60,11 +79,13 @@ function TravelBars({
   region,
   maxMinutes,
   routeSelection,
+  routes,
   onSelectRoute,
 }: {
   region: Region
   maxMinutes: number
   routeSelection: RouteSelection
+  routes: RouteEntries
   onSelectRoute: (selection: RouteSelection) => void
 }) {
   return (
@@ -108,7 +129,7 @@ function TravelBars({
               </button>
               <div className="route-detail" aria-hidden={!open}>
                 <div className="route-detail-inner">
-                  <RouteSummary travel={p} color={PARTICIPANT_COLORS[i]} />
+                  <RouteSummary entry={open ? routes[routeKey(region.station.id, i)] : undefined} color={PARTICIPANT_COLORS[i]} />
                 </div>
               </div>
             </li>
@@ -159,6 +180,7 @@ export default function ResultPanel({
   selectedRegion,
   selectedPlaceId,
   routeSelection,
+  routes,
   onSelectRegion,
   onSelectPlace,
   onSelectRoute,
@@ -168,6 +190,7 @@ export default function ResultPanel({
   const maxMinutes = Math.max(...data.regions.flatMap((r) => r.participants.map((p) => p.minutes)))
   const purposeLabel = PURPOSE_OPTIONS.find((o) => o.value === data.meta.purpose)?.label ?? ''
   const hasEstimate = data.regions.some((r) => r.participants.some((p) => p.is_estimated))
+  const { phase2, travel_source: travelSource } = data.meta
 
   return (
     <div className="result">
@@ -204,12 +227,18 @@ export default function ResultPanel({
           </span>
         </div>
         {region.station.lines.length > 0 && <p className="lines">{region.station.lines.join(' · ')}</p>}
+        <p className={`source-line${travelSource === 'estimate' ? ' estimate' : ''}`}>
+          {travelSource === 'estimate'
+            ? '이동시간: 지하철 그래프 추정값'
+            : `이동시간: ${travelSource === 'google' ? 'Google' : 'ODsay'} 실제 경로 기준 (상위 ${data.regions.length}곳 재계산)`}
+        </p>
         <p className="reason">{region.reason}</p>
 
         <TravelBars
           region={region}
           maxMinutes={maxMinutes}
           routeSelection={routeSelection}
+          routes={routes}
           onSelectRoute={onSelectRoute}
         />
 
@@ -252,7 +281,10 @@ export default function ResultPanel({
           <p>※ 연령대별 장소 선호도는 실제 데이터가 아닌 임의로 정한 설정값이에요.</p>
         )}
         {hasEstimate && (
-          <p>※ '추정'은 대중교통 경로 조회에 실패해 직선거리로 계산한 이동시간이에요.</p>
+          <p>
+            ※ '추정'은 실제 경로 확인에 실패해 지하철 그래프로 계산한 이동시간이에요
+            {phase2.reason ? ` (${phase2.reason})` : ''}.
+          </p>
         )}
         {data.meta.place_warnings.map((w) => (
           <p key={w}>※ {w}</p>

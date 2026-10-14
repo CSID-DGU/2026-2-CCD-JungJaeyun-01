@@ -1,0 +1,11 @@
+# 1단계 이동시간 추정 (API 호출 없음): 출발지 → 가까운 역 도보 + 지하철 그래프 최단 시간
+walk_speed_kmh: 4.5
+detour_factor: 1.3          # 직선거리 → 실제 도보 거리 보정
+boarding_wait_minutes: 3.0  # 첫 승차 전 평균 대기
+egress_minutes: 1.0         # 도착역 승강장 → 출구
+nearest_station_k: 3        # 출발지에서 가까운 역 후보 수 (이 중 전체 시간이 가장 짧은 역에서 탑승)
+
+# 지하철 그래프에 없는 역을 만났을 때의 직선거리 기반 대체 추정
+fallback:
+  transit_speed_kmh: 30
+  access_minutes: 10

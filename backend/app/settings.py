@@ -22,8 +22,13 @@ KAKAO_JS_KEY: str = os.getenv("VITE_KAKAO_JS_KEY", "")
 ODSAY_API_KEY: str = os.getenv("ODSAY_API_KEY", "")
 GOOGLE_PLACES_API_KEY: str = os.getenv("GOOGLE_PLACES_API_KEY", "")
 
-# 이동시간 캐시(SQLite). .gitignore의 *.sqlite3 규칙으로 커밋되지 않는다.
-TRAVEL_CACHE_PATH: Path = ROOT_DIR / "backend" / "data" / "travel_cache.sqlite3"
+# 경로 API 선택과 호출 모드. 키는 백엔드에서만 쓴다.
+ROUTE_PROVIDER: str = os.getenv("ROUTE_PROVIDER", "google").strip().lower()   # google | odsay (odsay는 기본 비활성화)
+ROUTE_MODE: str = os.getenv("ROUTE_MODE", "replay").strip().lower()           # live | record | replay (기본 replay: 호출 0)
+GOOGLE_ROUTES_KEY: str = os.getenv("GOOGLE_ROUTES_KEY", "")
+
+# 경로 응답 캐시와 하루 호출 수 집계(SQLite). .gitignore의 *.sqlite3 규칙으로 커밋되지 않는다.
+ROUTES_DB_PATH: Path = ROOT_DIR / "backend" / "data" / "routes_cache.sqlite3"
 
 # 장소 검색 결과(카카오), 평점(구글), 구글 일일 호출 수 캐시(SQLite).
 PLACES_CACHE_PATH: Path = ROOT_DIR / "backend" / "data" / "places_cache.sqlite3"

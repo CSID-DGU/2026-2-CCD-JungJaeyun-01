@@ -107,8 +107,9 @@ export class RouteLayer {
     })
 
     if (route.estimatedLabel) {
-      const first = route.legs[0].path
-      const mid = { lat: (first[0].lat + first[1].lat) / 2, lng: (first[0].lng + first[1].lng) / 2 }
+      // 가장 긴 구간의 가운데에 "추정 경로" 라벨을 붙인다.
+      const longest = route.legs.reduce((a, b) => (b.path.length > a.path.length ? b : a))
+      const mid = longest.path[Math.floor(longest.path.length / 2)]
       const el = document.createElement('div')
       el.className = 'route-label'
       el.textContent = route.estimatedLabel

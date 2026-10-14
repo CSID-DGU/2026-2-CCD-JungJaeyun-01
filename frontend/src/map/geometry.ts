@@ -1,5 +1,5 @@
 // 지도에 그릴 경로 도형을 만드는 순수 함수들 (카카오 SDK에 의존하지 않는다).
-import type { LatLng, ParticipantTravel } from '../types'
+import type { LatLng, Route } from '../types'
 
 export interface DrawLeg {
   dashed: boolean
@@ -13,7 +13,7 @@ export interface DrawableRoute {
   legs: DrawLeg[]
   /** 환승 지점 (두 번째 이후 대중교통 구간이 시작되는 곳) */
   transfers: LatLng[]
-  /** 실제 경로가 없어 출발지→도착역을 점선 직선으로 그릴 때의 표시 문구 */
+  /** 추정 경로일 때의 표시 문구 */
   estimatedLabel: string | null
 }
 
@@ -53,37 +53,26 @@ export function partialPath(path: LatLng[], d: number): LatLng[] {
 }
 
 /**
- * 참여자 한 명의 도형. 실제 경로가 있으면 구간별로(지하철·버스 실선, 도보 점선),
- * 없으면 가짜 경로를 만들지 않고 출발지→도착역 점선 직선만 만든다.
+ * 공통 경로 스키마(route)를 지도용 도형으로 바꾼다.
+ * 지하철·버스는 노선 색 실선(색이 없으면 참여자 색), 도보는 점선.
+ * 추정 경로(source='estimate')는 모든 구간을 점선으로 그리고 "추정 경로"라고 표시한다.
  */
-export function buildDrawable(
-  travel: ParticipantTravel,
-  origin: LatLng,
-  destination: LatLng,
-  color: string,
-): DrawableRoute {
-  if (!travel.route) {
-    return {
-      color,
-      legs: [{ dashed: true, color, weight: 4, path: [origin, destination] }],
-      transfers: [],
-      estimatedLabel: '추정 경로',
-    }
-  }
-  const legs: DrawLeg[] = travel.route.legs.map((leg) => ({
-    dashed: leg.kind === 'walk',
-    color: leg.kind === 'walk' ? color : (leg.color ?? color),
-    weight: leg.kind === 'walk' ? 4 : 6,
-    path: leg.path,
+export function buildDrawable(route: Route, color: string): DrawableRoute {
+  const estimated = route.source === 'estimate'
+  const legs: DrawLeg[] = route.segments.map((seg) => ({
+    dashed: seg.mode === 'WALK' || estimated,
+    color: seg.mode === 'WALK' ? color : (seg.lineColor ?? color),
+    weight: seg.mode === 'WALK' ? 4 : 6,
+    path: seg.path.map(([lat, lng]) => ({ lat, lng })),
   }))
   const transfers: LatLng[] = []
   let seenTransit = false
-  for (const leg of travel.route.legs) {
-    if (leg.kind === 'walk') continue
-    if (seenTransit) transfers.push(leg.path[0])
+  route.segments.forEach((seg, i) => {
+    if (seg.mode === 'WALK') return
+    if (seenTransit) transfers.push(legs[i].path[0])
     seenTransit = true
-  }
-  return { color, legs, transfers, estimatedLabel: null }
+  })
+  return { color, legs, transfers, estimatedLabel: estimated ? '추정 경로' : null }
 }
 
 /** 지도 범위를 맞출 때 쓰는, 경로가 지나는 모든 좌표 */

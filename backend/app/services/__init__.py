@@ -8,7 +8,7 @@ settings.USE_MOCK 값으로 어떤 구현을 쓸지 선택한다.
 from functools import lru_cache
 
 from app import settings
-from app.config import load_place_config, load_travel_config
+from app.config import load_estimate_params, load_google_settings, load_place_config, load_travel_config
 from app.services.place_search import (
     CachedPlaceService,
     KakaoPlaceService,
@@ -17,29 +17,38 @@ from app.services.place_search import (
 )
 from app.services.places_cache import PlacesCache
 from app.services.rating import GoogleRatingService, MockRatingService, RatingService
-from app.services.travel_cache import CachedTravelTimeService, TravelTimeCache
-from app.services.travel_time import (
-    MockTravelTimeService,
-    OdsayTravelTimeService,
-    TravelTimeService,
-)
+from app.services.routes_store import RoutesStore
+from app.subway import TravelEstimator, load_network
 
 
 @lru_cache
-def get_travel_time_service() -> TravelTimeService:
-    """USE_MOCK=true면 직선거리 추정, false면 ODsay + SQLite 캐시."""
-    config = load_travel_config()
-    if settings.USE_MOCK:
-        return MockTravelTimeService(config.mock)
-    odsay = OdsayTravelTimeService(
-        api_key=settings.ODSAY_API_KEY,
-        params=config.mock,
-        timeout=config.odsay_timeout_seconds,
-        min_interval=config.odsay_min_interval_seconds,
-        retry_delays=config.odsay_retry_delays_seconds,
-        quota_cooldown=config.odsay_quota_cooldown_seconds,
-    )
-    return CachedTravelTimeService(odsay, TravelTimeCache(settings.TRAVEL_CACHE_PATH))
+def get_routes_store() -> RoutesStore:
+    return RoutesStore(settings.ROUTES_DB_PATH)
+
+
+@lru_cache
+def get_estimator() -> TravelEstimator:
+    """1단계 이동시간 추정기 (지하철 그래프, API 호출 없음)."""
+    return TravelEstimator(load_network(), load_estimate_params())
+
+
+@lru_cache
+def get_route_provider():
+    """ROUTE_PROVIDER=google(기본) | odsay(기본 비활성화). Google은 ROUTE_MODE=live|record|replay(기본 replay)를 따른다."""
+    from app.providers.google import GoogleClient, GoogleRouteProvider
+    from app.providers.odsay import OdsayClient, OdsayRouteProvider
+
+    store = get_routes_store()
+    if settings.ROUTE_PROVIDER == "odsay":
+        travel = load_travel_config()
+        client = OdsayClient(
+            settings.ODSAY_API_KEY, travel.mock, timeout=travel.odsay_timeout_seconds,
+            min_interval=travel.odsay_min_interval_seconds, retry_delays=travel.odsay_retry_delays_seconds,
+            quota_cooldown=travel.odsay_quota_cooldown_seconds,
+        )
+        return OdsayRouteProvider(client, store)
+    gs = load_google_settings()
+    return GoogleRouteProvider(GoogleClient(settings.GOOGLE_ROUTES_KEY, settings.ROUTE_MODE, store, gs), gs)
 
 
 @lru_cache

@@ -27,7 +27,8 @@ from app.scoring.place import (
 )
 from app.services.place_search import Place, PlaceSearchError, PlaceService
 from app.services.rating import RatingResult, RatingService
-from app.services.travel_time import TravelTimeService
+from app.providers.base import RouteProvider
+from app.subway import TravelEstimator
 from app.stations import Station
 
 logger = logging.getLogger(__name__)
@@ -102,14 +103,15 @@ def rank_places(
 
 def recommend_with_places(
     request: RegionRecommendRequest,
-    travel_service: TravelTimeService,
+    estimator: TravelEstimator,
+    provider: RouteProvider | None,
     place_service: PlaceService,
     rating_service: RatingService,
     stations: Sequence[Station],
     region_config: RegionConfig,
     place_config: PlaceConfig,
 ) -> RecommendResponse:
-    base = recommend_regions(request, travel_service, stations, region_config)
+    base = recommend_regions(request, estimator, provider, stations, region_config)
     by_id = {s.id: s for s in stations}
     rule = place_config.purposes[request.purpose]
 

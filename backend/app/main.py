@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(recommend.router)
+app.include_router(recommend.route_router)
 app.include_router(search.router)
 app.include_router(diagnostics.router)
 
@@ -21,4 +22,5 @@ app.include_router(diagnostics.router)
 @app.get("/health")
 @app.get("/api/health")  # 프론트 프록시(/api/*)로 접근할 때 쓰는 경로
 def health() -> dict:
-    return {"status": "ok", "use_mock": settings.USE_MOCK}
+    return {"status": "ok", "use_mock": settings.USE_MOCK, "route_provider": settings.ROUTE_PROVIDER,
+            "route_mode": settings.ROUTE_MODE}

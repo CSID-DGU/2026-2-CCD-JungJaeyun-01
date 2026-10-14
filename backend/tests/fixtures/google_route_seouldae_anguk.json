@@ -1,0 +1,227 @@
+{
+ "origin": "서울대입구역",
+ "destination": "안국역",
+ "origin_latlng": [
+  37.4812845080678,
+  126.952713197762
+ ],
+ "destination_latlng": [
+  37.57650192060523,
+  126.98542143228659
+ ],
+ "response": {
+  "routes": [
+   {
+    "legs": [
+     {
+      "steps": [
+       {
+        "staticDuration": "780s",
+        "polyline": {
+         "encodedPolyline": "spwcFqmzeW@@dBgHvBiIfOgh@`HcVjAiE\\yAd@yDJcC?_CGaBOaBaAoGgAsGc@aEi@wG[uGKaHFeILqFXoERiEAcAGu@o@cDk@aC]gAwIcTo@iB{@aDcKcc@m@uCWaBA[OeBKaCc@aEWeB{@}De@cBc@}@_AwAo@s@yAkAu@]}Ac@_B[eLaAaEc@mCQ_CEiDo@u@We@Wg@a@c@g@m@mA{B{J_GoYwCkN"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "교대",
+           "location": {
+            "latLng": {
+             "latitude": 37.493902,
+             "longitude": 127.014395
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T09:14:00Z",
+          "departureStop": {
+           "name": "서울대입구 (관악구청)",
+           "location": {
+            "latLng": {
+             "latitude": 37.48122,
+             "longitude": 126.952728
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:01:00Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:14"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:01"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "외선순환 방면",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울메트로",
+            "uri": "http://www.seoulmetro.co.kr/"
+           }
+          ],
+          "name": "서울 지하철 2호선",
+          "color": "#35b12b",
+          "nameShort": "2호선",
+          "textColor": "#ffffff",
+          "vehicle": {
+           "name": {
+            "text": "지하철"
+           },
+           "type": "SUBWAY",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
+          }
+         },
+         "stopCount": 5
+        },
+        "travelMode": "TRANSIT"
+       },
+       {
+        "staticDuration": "25s",
+        "polyline": {
+         "encodedPolyline": "{_zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "{_zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "33s",
+        "polyline": {
+         "encodedPolyline": "{_zcF_offWZ?"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "96s",
+        "polyline": {
+         "encodedPolyline": "__zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "__zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "__zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "__zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "__zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "__zcF_offW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "__zcF_offWpCrB"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "1380s",
+        "polyline": {
+         "encodedPolyline": "mzycFkkffWcOnBeMdBmAb@_An@{@z@u@`Ao@lAi@zAaEzOo@bBy@vAsA|Ao@f@o@`@gAf@_DdAgC~@ePrGa@LeARgAFgACgAMeBg@_@Q{AcAw@y@o@aAUc@kKcXoKqYyB{GuAcF_EiPgFeQiIkWeAeD}AkE]s@_@Ww@Kyb@eAwAGiABcAL}@\\g@XmAfAg@h@cFnG{AdBoB`BqA|@gS|Laj@d]aAl@mClA_Bf@c@HuAT_CPgADaEHuGTqAPm@PeGxB_A`@}ChBiNtKcHpFQPeJ`HkExCwAx@qClA{@n@kAtAKNkClFIT]vBKrA?|ALbIE|B}Dxb@a@vC]zAs@vBwA`DiAbBcAbAkA~@o@^}@\\cAZuNjAqAF}RpAqGZiBPqRdE_KpB{@Zw@`@i@`@g@t@m@vAWx@OrAGzADnANbAH`@~CtI"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "안국",
+           "location": {
+            "latLng": {
+             "latitude": 37.576539,
+             "longitude": 126.98550999999999
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T09:39:00Z",
+          "departureStop": {
+           "name": "교대",
+           "location": {
+            "latLng": {
+             "latitude": 37.493030999999995,
+             "longitude": 127.01382000000001
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:16:00Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:39"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:16"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "구파발역 방면",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울메트로",
+            "uri": "http://www.seoulmetro.co.kr/"
+           }
+          ],
+          "name": "수도권 전철 3호선",
+          "color": "#f25c2b",
+          "nameShort": "3호선",
+          "textColor": "#000000",
+          "vehicle": {
+           "name": {
+            "text": "지하철"
+           },
+           "type": "SUBWAY",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
+          }
+         },
+         "stopCount": 12
+        },
+        "travelMode": "TRANSIT"
+       }
+      ]
+     }
+    ],
+    "duration": "2280s"
+   }
+  ]
+ }
+}

@@ -6,6 +6,7 @@ import { buildDrawable, routePoints } from '../map/geometry'
 import { MapMotion, computeFitTarget, prefersReducedMotion, type Padding } from '../map/motion'
 import { RouteLayer } from '../map/routeLayer'
 import type { MotionRequest, RouteSelection, ViewMode } from '../map/types'
+import { routeKey, type RouteEntries } from '../routes'
 import type { LatLng, Place, Region } from '../types'
 
 export interface OriginMarker {
@@ -21,6 +22,8 @@ interface Props {
   selectedRegion: number
   selectedPlaceId: string | null
   routeSelection: RouteSelection
+  /** 이름을 눌러 불러온 참여자별 상세 경로 */
+  routes: RouteEntries
   viewMode: ViewMode
   /** 연출을 일으킨 동작. id가 바뀔 때마다 해당 동작의 이동·연출을 한 번 실행한다. */
   motion: MotionRequest
@@ -54,9 +57,10 @@ const selectedIndexes = (p: Props): number[] =>
 function drawablesFor(p: Props) {
   const region = p.regions[p.selectedRegion]
   if (!region || p.origins.length !== region.participants.length) return []
-  return selectedIndexes(p).map((i) =>
-    buildDrawable(region.participants[i], p.origins[i], region.station, p.origins[i].color),
-  )
+  return selectedIndexes(p).flatMap((i) => {
+    const entry = p.routes[routeKey(region.station.id, i)]
+    return entry?.status === 'ok' ? [buildDrawable(entry.route, p.origins[i].color)] : []
+  })
 }
 
 /** 선택한 참여자들의 경로(출발지에서 시작)와 도착역만 보이게 맞춘다. 선택하지 않은 참여자는 포함하지 않는다. */

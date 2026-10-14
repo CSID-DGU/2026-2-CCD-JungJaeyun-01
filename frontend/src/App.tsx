@@ -1,10 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { recommend } from './api'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { fetchRoute, recommend } from './api'
+import DevUsage from './components/DevUsage'
 import InputForm from './components/InputForm'
 import MapView, { type OriginMarker } from './components/MapView'
 import ResultPanel from './components/ResultPanel'
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, PARTICIPANT_COLORS } from './constants'
 import type { MotionKind, MotionRequest, RouteSelection, ViewMode } from './map/types'
+import { routeKey, type RouteEntries, type RouteEntry } from './routes'
 import type { Purpose, RecommendResponse } from './types'
 import { toRequest, validateParticipants, type FieldErrors, type FormParticipant } from './validate'
 
@@ -28,11 +30,66 @@ function App() {
   const [routeSelection, setRouteSelection] = useState<RouteSelection>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
   const [motion, setMotion] = useState<MotionRequest>({ id: 0, kind: 'none' })
+  const [routes, setRoutes] = useState<RouteEntries>({})
+  const [usageTick, setUsageTick] = useState(0)
+
+  // 콜백(지도에 넘기는 안정적인 함수)이 항상 최신 값을 보도록 ref에 둔다.
+  const latest = useRef({ participants, data, routeSelection, selectedRegion })
+  useEffect(() => {
+    latest.current = { participants, data, routeSelection, selectedRegion }
+  })
+  const routesRef = useRef<RouteEntries>({})
+  const pending = useRef(new Map<string, Promise<void>>())
+  const selectionToken = useRef(0)
 
   /** 지도에 "이번 동작의 이동·연출을 한 번 실행하라"고 알린다. */
   const bumpMotion = useCallback((kind: MotionKind) => {
     setMotion({ id: ++motionId.current, kind })
   }, [])
+
+  const setEntry = useCallback((key: string, entry: RouteEntry) => {
+    routesRef.current = { ...routesRef.current, [key]: entry }
+    setRoutes(routesRef.current)
+  }, [])
+
+  const resetRoutes = useCallback(() => {
+    routesRef.current = {}
+    pending.current.clear()
+    setRoutes({})
+  }, [])
+
+  /** 선택한 참여자들의 상세 경로를 불러온다. 이미 있거나 불러오는 중이면 재사용한다 (백엔드도 캐시한다). */
+  const ensureRoutes = useCallback(
+    async (regionIndex: number, indexes: number[]) => {
+      const { data: current, participants: people } = latest.current
+      const region = current?.regions[regionIndex]
+      if (!region) return
+      const jobs = indexes.map((i) => {
+        const key = routeKey(region.station.id, i)
+        const existing = routesRef.current[key]
+        if (existing?.status === 'ok') return Promise.resolve()
+        const inFlight = pending.current.get(key)
+        if (inFlight) return inFlight
+        const origin = people[i]?.origin
+        if (!origin) return Promise.resolve()
+        setEntry(key, { status: 'loading' })
+        const job = fetchRoute(origin.lat, origin.lng, region.station.id)
+          .then((res) => setEntry(key, { status: 'ok', route: res.route, note: res.note }))
+          .catch((e: unknown) =>
+            setEntry(key, { status: 'error', message: e instanceof Error ? e.message : '경로를 불러오지 못했어요.' }),
+          )
+          .finally(() => pending.current.delete(key))
+        pending.current.set(key, job)
+        return job
+      })
+      await Promise.all(jobs)
+      setUsageTick((t) => t + 1)
+    },
+    [setEntry],
+  )
+
+  const indexesOf = (selection: RouteSelection): number[] =>
+    selection === 'all' ? latest.current.participants.map((_, i) => i) : selection === null ? [] : [selection]
 
   // 지도에 넘기는 값은 참조가 안정적이어야 한다 (바뀔 때만 마커/범위를 다시 계산).
   const origins = useMemo<OriginMarker[]>(
@@ -47,13 +104,22 @@ function App() {
   const regions = useMemo(() => data?.regions ?? [], [data])
 
   const selectRegion = useCallback(
-    (index: number) => {
+    async (index: number) => {
       setSelectedRegion(index)
       setSelectedPlaceId(null)
       setViewMode('focus')
-      bumpMotion('region') // 선택된 참여자 경로는 유지되고 새 지역 기준으로 다시 그려진다
+      const selection = latest.current.routeSelection
+      if (selection === null) {
+        bumpMotion('region')
+        return
+      }
+      // 경로가 선택된 상태에서 지역을 바꾸면 새 지역 기준 경로를 불러온 뒤 다시 그린다.
+      const token = ++selectionToken.current
+      await ensureRoutes(index, indexesOf(selection))
+      if (token === selectionToken.current) bumpMotion('region')
     },
-    [bumpMotion],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bumpMotion, ensureRoutes],
   )
 
   const selectPlace = useCallback(
@@ -66,12 +132,20 @@ function App() {
   )
 
   const selectRoute = useCallback(
-    (selection: RouteSelection) => {
+    async (selection: RouteSelection) => {
+      const token = ++selectionToken.current
       setRouteSelection(selection)
-      if (selection !== null) setViewMode('focus')
-      bumpMotion('route')
+      if (selection === null) {
+        bumpMotion('route')
+        return
+      }
+      setViewMode('focus')
+      latest.current.routeSelection = selection
+      await ensureRoutes(latest.current.selectedRegion, indexesOf(selection))
+      if (token === selectionToken.current) bumpMotion('route')
     },
-    [bumpMotion],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bumpMotion, ensureRoutes],
   )
 
   const toggleView = useCallback(() => {
@@ -114,12 +188,14 @@ function App() {
     setLoading(true)
     try {
       const result = await recommend(toRequest(participants, purpose))
+      resetRoutes() // 참여자·지역이 바뀌었을 수 있으니 이전 경로는 버린다
       setData(result)
       setSelectedRegion(0)
       setSelectedPlaceId(null)
       setRouteSelection(null)
       setViewMode('overview')
       bumpMotion('search') // 전체를 보여준 뒤 1·2·3위 마커가 순서대로 떨어진다
+      setUsageTick((t) => t + 1)
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : '추천을 가져오지 못했습니다.')
     } finally {
@@ -136,6 +212,7 @@ function App() {
           selectedRegion={selectedRegion}
           selectedPlaceId={selectedPlaceId}
           routeSelection={routeSelection}
+          routes={routes}
           viewMode={viewMode}
           motion={motion}
           obstacleRef={panelRef}
@@ -152,10 +229,12 @@ function App() {
             selectedRegion={selectedRegion}
             selectedPlaceId={selectedPlaceId}
             routeSelection={routeSelection}
+            routes={routes}
             onSelectRegion={selectRegion}
             onSelectPlace={selectPlace}
             onSelectRoute={selectRoute}
             onBack={() => {
+              selectionToken.current++
               setData(null)
               setSelectedPlaceId(null)
               setRouteSelection(null)
@@ -178,6 +257,8 @@ function App() {
           />
         )}
       </aside>
+
+      <DevUsage refreshKey={usageTick} accuracy={data?.meta.estimate_accuracy ?? null} />
     </div>
   )
 }

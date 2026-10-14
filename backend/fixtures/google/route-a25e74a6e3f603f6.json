@@ -1,0 +1,106 @@
+{
+ "kind": "route",
+ "key": "r|37.5133,127.1002|21160481|weekday-18",
+ "recordedAt": "2026-10-14T15:26:54.220380+00:00",
+ "request": {
+  "travelMode": "TRANSIT",
+  "regionCode": "KR",
+  "departureTime": "2026-10-16T09:00:00Z",
+  "origin": {
+   "location": {
+    "latLng": {
+     "latitude": 37.513311,
+     "longitude": 127.100231
+    }
+   }
+  },
+  "destination": {
+   "location": {
+    "latLng": {
+     "latitude": 37.561268363317176,
+     "longitude": 127.03710337610202
+    }
+   }
+  },
+  "languageCode": "ko"
+ },
+ "response": {
+  "routes": [
+   {
+    "legs": [
+     {
+      "steps": [
+       {
+        "staticDuration": "960s",
+        "polyline": {
+         "encodedPolyline": "my}cFagwfWk@mDyAsG_A}B[k@}@mA}@aAiBsAiB{@qA]qAWsAMiBDeBTwBj@w@XkGtCgM`GcEbCm|@jf@yDxBsAp@kDrB_Bv@eAv@_A`Au@nAo@vAe@|AWzAKx@IdBCx@DhBPfBxEvYf@xDF|@@hAC`AKv@s@hEgGf`@{BpNeGfYu@`Dy@nDeGjW}CtNqGl[wDjRyBxKwBvJeBnIgBvH_@fBo@xBy@|Aa@h@g@b@sAx@o@Ro@L{Eb@wCJ_EBu@ByMlAeDVmE`@}Jp@wCVm@JsAf@s@`@gAjAm@hASb@a@vAO~@KhAAl@?dIBjH"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "왕십리",
+           "location": {
+            "latLng": {
+             "latitude": 37.561228,
+             "longitude": 127.03725399999999
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T09:17:00Z",
+          "departureStop": {
+           "name": "잠실",
+           "location": {
+            "latLng": {
+             "latitude": 37.513349999999996,
+             "longitude": 127.100171
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:01:00Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:17"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:01"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "외선순환 방면",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울메트로",
+            "uri": "http://www.seoulmetro.co.kr/"
+           }
+          ],
+          "name": "서울 지하철 2호선",
+          "color": "#35b12b",
+          "nameShort": "2호선",
+          "textColor": "#ffffff",
+          "vehicle": {
+           "name": {
+            "text": "지하철"
+           },
+           "type": "SUBWAY",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
+          }
+         },
+         "stopCount": 8
+        },
+        "travelMode": "TRANSIT"
+       }
+      ]
+     }
+    ],
+    "duration": "960s"
+   }
+  ]
+ }
+}

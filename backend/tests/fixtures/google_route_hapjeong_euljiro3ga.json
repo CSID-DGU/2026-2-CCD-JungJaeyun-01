@@ -1,0 +1,91 @@
+{
+ "origin": "합정역",
+ "destination": "을지로3가역",
+ "origin_latlng": [
+  37.54991315995173,
+  126.91445406513526
+ ],
+ "destination_latlng": [
+  37.56629149790628,
+  126.99098443539428
+ ],
+ "response": {
+  "routes": [
+   {
+    "legs": [
+     {
+      "steps": [
+       {
+        "staticDuration": "960s",
+        "polyline": {
+         "encodedPolyline": "c~ddF{~reWA@gTk[qSyZ{IsMSa@UaAIw@@w@Jy@hSwv@P_AHs@?k@IoAeF{TKq@Eo@sDmyACgBTaQQ{AWwAi@qB]{@oGiN_BuDwGeMg@sAa@qA]}AmAcIcCoQqAcHwCsLa@eAgBuCqAgAe@Yy@}@W_@s@cB[{AIaACaAAuIIoIEeBOg\\MkKGiCA?"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "을지로3가",
+           "location": {
+            "latLng": {
+             "latitude": 37.566288,
+             "longitude": 126.991051
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T09:18:00Z",
+          "departureStop": {
+           "name": "합정",
+           "location": {
+            "latLng": {
+             "latitude": 37.549942,
+             "longitude": 126.914543
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:02:00Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:18"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:02"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "내선순환 방면",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울메트로",
+            "uri": "http://www.seoulmetro.co.kr/"
+           }
+          ],
+          "name": "서울 지하철 2호선",
+          "color": "#35b12b",
+          "nameShort": "2호선",
+          "textColor": "#ffffff",
+          "vehicle": {
+           "name": {
+            "text": "지하철"
+           },
+           "type": "SUBWAY",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
+          }
+         },
+         "stopCount": 8
+        },
+        "travelMode": "TRANSIT"
+       }
+      ]
+     }
+    ],
+    "duration": "960s"
+   }
+  ]
+ }
+}

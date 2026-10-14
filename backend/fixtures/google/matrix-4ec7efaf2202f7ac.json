@@ -1,0 +1,108 @@
+{
+ "kind": "matrix",
+ "key": "matrix|37.5569,126.9238;37.5133,127.1002|21160617,21160481,21160530|weekday-18",
+ "recordedAt": "2026-10-14T15:26:42.261899+00:00",
+ "request": {
+  "travelMode": "TRANSIT",
+  "regionCode": "KR",
+  "departureTime": "2026-10-16T09:00:00Z",
+  "origins": [
+   {
+    "waypoint": {
+     "location": {
+      "latLng": {
+       "latitude": 37.556871,
+       "longitude": 126.923779
+      }
+     }
+    }
+   },
+   {
+    "waypoint": {
+     "location": {
+      "latLng": {
+       "latitude": 37.513311,
+       "longitude": 127.100231
+      }
+     }
+    }
+   }
+  ],
+  "destinations": [
+   {
+    "waypoint": {
+     "location": {
+      "latLng": {
+       "latitude": 37.56566440553802,
+       "longitude": 127.00900417014896
+      }
+     }
+    }
+   },
+   {
+    "waypoint": {
+     "location": {
+      "latLng": {
+       "latitude": 37.561268363317176,
+       "longitude": 127.03710337610202
+      }
+     }
+    }
+   },
+   {
+    "waypoint": {
+     "location": {
+      "latLng": {
+       "latitude": 37.56629149790628,
+       "longitude": 126.99098443539428
+      }
+     }
+    }
+   }
+  ]
+ },
+ "response": [
+  {
+   "originIndex": 0,
+   "destinationIndex": 1,
+   "status": {},
+   "duration": "1409s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
+   "destinationIndex": 2,
+   "status": {},
+   "duration": "869s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
+   "destinationIndex": 0,
+   "status": {},
+   "duration": "1109s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 1,
+   "destinationIndex": 1,
+   "status": {},
+   "duration": "960s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 1,
+   "destinationIndex": 0,
+   "status": {},
+   "duration": "1320s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 1,
+   "destinationIndex": 2,
+   "status": {},
+   "duration": "1500s",
+   "condition": "ROUTE_EXISTS"
+  }
+ ]
+}

@@ -1021,3 +1021,54 @@ input.selected {
     transition: none !important;
   }
 }
+
+/* ---------- 경로 요약 상태, 이동시간 출처, 개발용 호출 수 ---------- */
+.route-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.route-total .badge {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.route-total .badge.source {
+  background: #e8f5ee;
+  color: #1b6b45;
+}
+
+.source-line {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.source-line.estimate {
+  color: #8a5a00;
+  font-weight: 600;
+}
+
+.dev-usage {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 360px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.88);
+  color: #e2e8f0;
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.dev-usage strong {
+  color: #fff;
+}

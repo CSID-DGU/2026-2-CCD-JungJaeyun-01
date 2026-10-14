@@ -1,0 +1,189 @@
+{
+ "origin": "수원역",
+ "destination": "종각역",
+ "origin_latlng": [
+  37.26568218296588,
+  127.00004960484385
+ ],
+ "destination_latlng": [
+  37.570227990912244,
+  126.98315081716676
+ ],
+ "response": {
+  "routes": [
+   {
+    "legs": [
+     {
+      "steps": [
+       {
+        "staticDuration": "58s",
+        "polyline": {
+         "encodedPolyline": "ommbFiucfW_Bl@"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "1380s",
+        "polyline": {
+         "encodedPolyline": "grmbFitcfWoto@j~P"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "영등포",
+           "location": {
+            "latLng": {
+             "latitude": 37.515636199999996,
+             "longitude": 126.90783459999999
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T09:40:30Z",
+          "departureStop": {
+           "name": "수원역",
+           "location": {
+            "latLng": {
+             "latitude": 37.2664423,
+             "longitude": 126.99989099999999
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:17:30Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:40"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:17"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "용산행",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "한국철도공사",
+            "uri": "https://ga-g.onntapi.com/#1"
+           }
+          ],
+          "name": "전라",
+          "vehicle": {
+           "name": {
+            "text": "기차"
+           },
+           "type": "HEAVY_RAIL",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/rail2.png"
+          }
+         },
+         "stopCount": 1
+        },
+        "travelMode": "TRANSIT"
+       },
+       {
+        "staticDuration": "43s",
+        "polyline": {
+         "encodedPolyline": "if~cFqpqeWmAK"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "22s",
+        "polyline": {
+         "encodedPolyline": "wh~cF}pqeW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "wh~cF}pqeW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "17s",
+        "polyline": {
+         "encodedPolyline": "wh~cF}pqeWAqA"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "1200s",
+        "polyline": {
+         "encodedPolyline": "yh~cFosqeW{BgIc@uB[}B[wEw@e[?aCNkD\\mCRkA`@}AX_Az@qBn@mA\\i@jIkLx@aBd@_Bd@_CLmALqDE{FMuGU_c@a@}XSgEeAkNWoJIqCMsCO{A_@_Cg@iB[_Ai@oAm@kAyAqB}DkEgAgAyBiCuNsOu[c^cAoAqDqFaC{DeNuSmAsBGAF@wAmBsRyYwAyAoByAe@YiB}@uBq@uBa@_D]mAIeIMaPEqPNqFB{PMoGKsAK}Ca@wEo@{E_@_HYoDWiDi@}Cu@cNsLcCaBcAi@{@[_T{FgAWkBEsTR{EH]MSQYk@CU@aTBuMA?"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "종각",
+           "location": {
+            "latLng": {
+             "latitude": 37.570176000000004,
+             "longitude": 126.98319699999999
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T10:07:00Z",
+          "departureStop": {
+           "name": "영등포",
+           "location": {
+            "latLng": {
+             "latitude": 37.515813,
+             "longitude": 126.90760499999999
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:47:00Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 7:07"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:47"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "청량리역 방면",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울메트로",
+            "uri": "http://www.seoulmetro.co.kr/"
+           }
+          ],
+          "name": "서울지하철",
+          "color": "#003499",
+          "nameShort": "1호선",
+          "textColor": "#ffffff",
+          "vehicle": {
+           "name": {
+            "text": "지하철"
+           },
+           "type": "SUBWAY",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
+          }
+         },
+         "stopCount": 8
+        },
+        "travelMode": "TRANSIT"
+       }
+      ]
+     }
+    ],
+    "duration": "3028s"
+   }
+  ]
+ }
+}

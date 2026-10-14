@@ -10,6 +10,7 @@ import yaml
 
 from app.scoring.place import AgeGroupPreference, PlaceScoringParams, PlaceWeights
 from app.scoring.region import RegionWeights
+from app.subway import EstimateParams
 
 CONFIG_DIR = Path(__file__).resolve().parents[1] / "config"
 
@@ -156,4 +157,34 @@ def load_place_config() -> PlaceConfig:
             match_radius_m=float(raw["google"]["match_radius_m"]),
         ),
         age=load_age_preferences(),
+    )
+
+
+@lru_cache
+def load_estimate_params() -> EstimateParams:
+    raw = _read_yaml("subway.yaml")
+    return EstimateParams(
+        walk_speed_kmh=float(raw["walk_speed_kmh"]),
+        detour_factor=float(raw["detour_factor"]),
+        boarding_wait_minutes=float(raw["boarding_wait_minutes"]),
+        egress_minutes=float(raw["egress_minutes"]),
+        nearest_station_k=int(raw["nearest_station_k"]),
+        fallback_transit_speed_kmh=float(raw["fallback"]["transit_speed_kmh"]),
+        fallback_access_minutes=float(raw["fallback"]["access_minutes"]),
+    )
+
+
+@lru_cache
+def load_google_settings():
+    from app.providers.google import GoogleSettings
+
+    raw = _read_yaml("routes.yaml")
+    return GoogleSettings(
+        departure_hour=int(raw["departure"]["hour"]),
+        utc_offset_hours=int(raw["departure"]["utc_offset_hours"]),
+        cache_ttl_days=int(raw["cache_ttl_days"]),
+        max_retries=int(raw["retry"]["max_retries"]),
+        backoff_seconds=float(raw["retry"]["backoff_seconds"]),
+        timeout_seconds=float(raw["timeout_seconds"]),
+        cooldown_seconds=float(raw["cooldown_seconds"]),
     )

@@ -1,4 +1,4 @@
-import type { PlaceHit, RecommendRequest, RecommendResponse } from './types'
+import type { PlaceHit, RecommendRequest, RecommendResponse, RouteResponse } from './types'
 
 const NETWORK_ERROR = '서버에 연결할 수 없습니다. 백엔드(localhost:8000)가 실행 중인지 확인해 주세요.'
 
@@ -46,4 +46,25 @@ export function recommend(body: RecommendRequest): Promise<RecommendResponse> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+}
+
+/** 참여자 한 명의 상세 경로. 사용자가 이름을 눌렀을 때만 호출한다 (백엔드가 캐시). */
+export function fetchRoute(lat: number, lng: number, stationId: string): Promise<RouteResponse> {
+  return request('/api/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lng, station_id: stationId }),
+  })
+}
+
+export interface UsageInfo {
+  day: string
+  provider: string
+  mode: string
+  counters: Record<string, number>
+}
+
+/** 개발용: 오늘 경로 API 호출 수 */
+export function fetchUsage(): Promise<UsageInfo> {
+  return request('/api/dev/usage')
 }

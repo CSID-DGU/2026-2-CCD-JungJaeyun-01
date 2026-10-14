@@ -1,0 +1,134 @@
+{
+ "kind": "route",
+ "key": "r|37.5569,126.9238|21160481|weekday-18",
+ "recordedAt": "2026-10-14T15:26:53.633022+00:00",
+ "request": {
+  "travelMode": "TRANSIT",
+  "regionCode": "KR",
+  "departureTime": "2026-10-16T09:00:00Z",
+  "origin": {
+   "location": {
+    "latLng": {
+     "latitude": 37.556871,
+     "longitude": 126.923779
+    }
+   }
+  },
+  "destination": {
+   "location": {
+    "latLng": {
+     "latitude": 37.561268363317176,
+     "longitude": 127.03710337610202
+    }
+   }
+  },
+  "languageCode": "ko"
+ },
+ "response": {
+  "routes": [
+   {
+    "legs": [
+     {
+      "steps": [
+       {
+        "staticDuration": "31s",
+        "polyline": {
+         "encodedPolyline": "mifdFsxteWGcA"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "30s",
+        "polyline": {
+         "encodedPolyline": "uifdFwzteW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "uifdFwzteW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "28s",
+        "polyline": {
+         "encodedPolyline": "uifdFwzteWUR"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "1320s",
+        "polyline": {
+         "encodedPolyline": "kjfdFczteWoGoJSa@UaAIw@@w@Jy@hSwv@P_AHs@?k@IoAeF{TKq@Eo@sDmyACgBTaQQ{AWwAi@qB]{@oGiN_BuDwGeMg@sAa@qA]}AmAcIcCoQqAcHwCsLa@eAgBuCqAgAe@Yy@}@W_@s@cB[{AIaACaAAuIIoIEeBOg\\MkKo@}ZUmNy@k_@DgA|C_\\VgBv@{DrBiJT_BJsA@kB_BiYk@mJMsFAoEBaAHyAjA_KXyDHsDDeGBuAJgA~@aGz@qE`@aB|CgJ|BuGl@oAvDcG`@{@V{@LmA@gBCsD"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "왕십리",
+           "location": {
+            "latLng": {
+             "latitude": 37.561228,
+             "longitude": 127.03725399999999
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T09:24:00Z",
+          "departureStop": {
+           "name": "홍대입구",
+           "location": {
+            "latLng": {
+             "latitude": 37.557016,
+             "longitude": 126.924019
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:02:00Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:24"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:02"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "내선순환 방면",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울메트로",
+            "uri": "http://www.seoulmetro.co.kr/"
+           }
+          ],
+          "name": "서울 지하철 2호선",
+          "color": "#35b12b",
+          "nameShort": "2호선",
+          "textColor": "#ffffff",
+          "vehicle": {
+           "name": {
+            "text": "지하철"
+           },
+           "type": "SUBWAY",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
+          }
+         },
+         "stopCount": 12
+        },
+        "travelMode": "TRANSIT"
+       }
+      ]
+     }
+    ],
+    "duration": "1409s"
+   }
+  ]
+ }
+}

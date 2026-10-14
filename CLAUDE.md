@@ -12,8 +12,9 @@ meetup-recommender/
 │   │   ├── settings.py # 환경변수 로딩 (루트 .env)
 │   │   ├── services/   # 외부 API 인터페이스 + mock/실제 구현
 │   │   └── scoring/    # RegionScore, PlaceScore 순수 함수
-│   ├── config/         # region.yaml, travel.yaml, place.yaml, age_preferences.json
-│   ├── data/           # stations.json (후보 역 좌표), *.sqlite3 캐시 (gitignore)
+│   ├── config/         # region.yaml, subway.yaml, routes.yaml, travel.yaml(ODsay), place.yaml, age_preferences.json
+│   ├── data/           # stations.json (후보 역), subway/ (지하철 그래프+출처 README), *.sqlite3 캐시 (gitignore)
+│   ├── fixtures/google/ # ROUTE_MODE=record로 저장한 Google 응답 (replay 기본값이 읽는다)
 │   ├── scripts/        # test_apis.py, fetch_stations.py, demo_recommend.py
 │   ├── tests/          # pytest
 │   └── requirements.txt
@@ -26,7 +27,7 @@ meetup-recommender/
 ## 규칙
 
 ### API 키
-- 외부 API 키는 **백엔드에서만** 사용한다. 프론트에서 외부 API(ODsay, 카카오 로컬, Google Places 등)를 직접 호출하지 않고 반드시 백엔드를 거친다.
+- 외부 API 키는 **백엔드에서만** 사용한다. 프론트에서 외부 API(Google Routes, 카카오 로컬, Google Places 등)를 직접 호출하지 않고 반드시 백엔드를 거친다.
 - 예외: **카카오맵 JavaScript 키(`VITE_KAKAO_JS_KEY`)만** 프론트에서 사용한다.
   - `frontend/vite.config.ts`의 `envPrefix: ['VITE_KAKAO_JS_']` 때문에 이 키만 프론트 번들에 노출된다. prefix를 넓히거나 다른 키를 프론트에 추가하지 않는다.
 - API 키는 루트의 `.env`로 관리한다. `.env`는 `.gitignore`에 포함되어 있으며 절대 커밋하지 않는다.
@@ -35,15 +36,17 @@ meetup-recommender/
 ### 외부 API 호출 분리
 - 외부 API 호출은 `backend/app/services/` 아래에 **인터페이스(추상 클래스 또는 Protocol)** 로 정의한다.
 - 각 인터페이스마다 **mock 구현**과 **실제 구현**을 둔다.
-  - 예: `TransitService` → `MockTransitService`, `OdsayTransitService`
+  - 예: `RouteProvider` → `GoogleRouteProvider`, `OdsayRouteProvider` (경로 API의 mock 역할은 `ROUTE_MODE=replay`가 한다)
   - 예: `PlaceService` → `MockPlaceService`, `KakaoPlaceService`
 - 환경변수 `USE_MOCK=true/false`로 구현을 전환한다 (`app.settings.USE_MOCK`). 라우터·점수 계산 코드는 구현체가 아니라 인터페이스에만 의존한다.
 - mock 구현은 API 키 없이도 전체 흐름이 동작하도록 현실적인 고정 데이터를 반환한다.
 - 예외: 출발지 자동완성 `GET /api/search/places`(`services/place_lookup.py`)는 mock 없이 `USE_MOCK`과 관계없이 항상 실제 카카오 키워드 검색을 쓴다.
-- ODsay 조회가 재시도 후에도 실패한 출발지-역 조합은 후보에서 빼지 않고 mock의 거리 기반 추정치로 대체하며, 응답에 `is_estimated`로 표시한다 (추정치는 캐시하지 않는다).
-- 참여자 이동 경로(`subPath`/`passStopList`의 정류장 좌표)는 추천 요청 중 받은 ODsay 응답에서 파싱해 이동시간과 함께 SQLite 캐시(`route_json`)에 저장한다. 지도에서 경로를 보여줄 때는 저장된 값만 쓰고 추가 API 호출을 하지 않는다. 경로 저장 도입 전 캐시 행은 상위 지역에 한해 한 번만 채운다.
-- 실제 경로가 없는 참여자(추정치 대체, mock, 조회 실패)는 가짜 경로를 만들지 않는다. 응답의 `route`는 null, `route_note`에 이유를 담고, 화면은 출발지→도착역 점선 직선과 "추정 경로"로 표시한다.
-- ODsay가 재시도 후에도 429면 한도 초과로 보고 `travel.yaml`의 `quota_cooldown_seconds`(기본 300초) 동안 HTTP 호출 없이 바로 실패 처리한다.
+- 경로 API 호출은 **2단계 구조**를 지킨다. 1단계는 API 없이 지하철 그래프(`app/subway.py`)로 후보를 점수화하고, 2단계는 상위 3곳만 `computeRouteMatrix`로 **검색당 최대 1회** 확인한다. 상세 경로(`computeRoutes`)는 사용자가 참여자 이름을 누를 때(`POST /api/route`)만 호출한다. 이 호출 횟수를 늘리는 변경은 테스트(`test_recommend_api.py`의 호출 횟수 테스트)가 깨지도록 되어 있다.
+- 경로 프로바이더는 `app/providers/`의 `RouteProvider`(matrix/route)를 구현한다. 기본 `ROUTE_PROVIDER=google`, ODsay(`providers/odsay.py`)는 기본 비활성화다. 프론트는 공통 경로 스키마(`app/route_model.py`: `totalMinutes, transfers, segments[{mode, lineName, lineColor, from, to, minutes, path}], source`)만 안다. 새 경로 API는 이 형식으로 변환해서 붙인다.
+- `ROUTE_MODE`: `replay`(기본, 저장본만·호출 0) | `record`(호출 + `backend/fixtures/google/` 저장) | `live`(호출 + 7일 디스크 캐시, 발표용). 개발·테스트는 replay로 하고 live는 발표 때만 쓴다. 실제 호출 테스트는 반드시 호출 수를 먼저 계산해서 알린다.
+- Google 호출 보호: 캐시 키는 (출발지 좌표 소수 4자리, 도착역, 요일·시간대), 동시 같은 요청은 한 번만 호출(SingleFlight), 일시 오류만 1회 재시도, 키 제한·API 미사용·할당량 오류는 재시도 없이 일정 시간 호출을 멈춘다. FieldMask에는 쓰는 필드만 넣는다. 키는 백엔드 로그·응답에 남기지 않는다.
+- 경로 API가 실패한 값은 1단계 추정값으로 대체하고 응답의 `is_estimated`와 화면의 "추정"으로 명확히 표시한다. 상세 경로가 실패하면 그래프 추정 경로를 `source: "estimate"`(점선, "추정 경로" 라벨)로 돌려준다. 실패한 응답은 캐시하지 않는다.
+- 지하철 그래프 데이터(`backend/data/subway/`)의 출처와 한계는 그 폴더의 README에 있다. 데이터를 바꾸면 `scripts/build_subway_network.py`로 `network.json`을 다시 만든다.
 - 지도 연출은 App이 동작(검색/지역 탭/장소 카드/경로/전체 보기)마다 `motion` id를 올려 MapView가 이동 → 연출 순서로 한 번 실행한다. `prefers-reduced-motion`이면 즉시 이동·표시한다.
 - 카카오맵 SDK는 카카오 개발자 콘솔의 Web 플랫폼에 `http://localhost:5173`이 등록되어 있어야 로드된다.
 
@@ -75,7 +78,7 @@ uvicorn app.main:app --reload --port 8000
 - 테스트: `cd backend && pytest`
 - 추천 호출: `POST /api/recommend` (상위 3개 지역 + 지역별 장소 5곳), 지역만: `POST /api/recommend/regions`
 - 후보 역 좌표 재생성(카카오 키워드 검색): `python scripts/fetch_stations.py`
-- 추천 데모: `python scripts/demo_recommend.py` (`USE_MOCK=false`면 ODsay·카카오·구글 실제 호출, API별 호출 수 출력. ODsay 최악 호출이 50건 초과면 중단)
+- 추천 데모: `python scripts/demo_recommend.py` (경로 API는 `ROUTE_MODE`를 따르고, 기본 replay는 호출 0)
 
 ### 프론트엔드 (http://localhost:5173)
 

@@ -21,33 +21,40 @@ export interface LatLng {
   lng: number
 }
 
-export interface RouteLeg {
-  kind: 'walk' | 'subway' | 'bus'
+/** 경로 API 종류와 무관한 공통 경로 스키마 (백엔드가 Google/ODsay/추정 결과를 이 형식으로 변환한다) */
+export type RouteMode = 'WALK' | 'SUBWAY' | 'BUS'
+
+export interface RouteSegment {
+  mode: RouteMode
+  lineName: string | null
+  lineColor: string | null
+  from: string | null
+  to: string | null
   minutes: number
-  distance_m: number
-  label: string | null
-  color: string | null
-  from_name: string | null
-  to_name: string | null
-  stop_count: number | null
-  /** 지도에 그릴 좌표 (출발 → 도착) */
-  path: LatLng[]
+  /** [[lat, lng], ...] 출발 → 도착 */
+  path: [number, number][]
 }
 
 export interface Route {
-  total_minutes: number
+  totalMinutes: number
   transfers: number
-  legs: RouteLeg[]
+  segments: RouteSegment[]
+  /** google: 실제 경로 / estimate: 지하철 그래프 추정 경로 */
+  source: 'google' | 'estimate' | 'odsay'
+}
+
+export interface RouteResponse {
+  route: Route
+  /** 추정 경로일 때 이유 */
+  note: string | null
 }
 
 export interface ParticipantTravel {
   name: string
   minutes: number
-  /** true면 ODsay 조회에 실패해 거리 기반으로 추정한 값 */
+  /** true면 경로 API 확인에 실패해 1단계 추정값을 쓴 것 ("추정" 표시) */
   is_estimated: boolean
-  /** 실제 대중교통 경로. 없으면 route_note에 이유가 있다 (가짜 경로는 만들지 않는다). */
-  route: Route | null
-  route_note: string | null
+  estimate_minutes: number | null
 }
 
 export interface Place {
@@ -78,12 +85,28 @@ export interface Region {
   places: Place[]
 }
 
+export interface Phase2 {
+  status: 'ok' | 'failed' | 'skipped'
+  reason: string | null
+  provider: string | null
+  api_calls: number
+  cache_hits: number
+}
+
+export interface EstimateAccuracy {
+  mae_minutes: number
+  bias_minutes: number
+  pairs: { participant: string; station: string; estimate_minutes: number; actual_minutes: number; diff_minutes: number }[]
+}
+
 export interface RecommendResponse {
   regions: Region[]
   meta: {
     purpose: Purpose
-    evaluated_count: number
-    estimated_travel: { station: string; participant: string; reason: string }[]
+    candidate_count: number
+    travel_source: string
+    phase2: Phase2
+    estimate_accuracy: EstimateAccuracy | null
     age_preference: { source: string; is_assumed: boolean; note: string }
     place_warnings: string[]
   }

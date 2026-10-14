@@ -1,0 +1,55 @@
+# 지하철 네트워크 생성 규칙 (scripts/build_subway_network.py가 읽는다)
+
+# 서울교통공사 CSV는 노선마다 역을 한 줄로 이어 놓았다. 분기·순환 구간은 이 규칙으로 연결을 바로잡는다.
+# station: 이 역의 소요시간은 connect_from 역에서 오는 값이다 (직전 행에서 오는 값이 아님).
+official_breaks:
+  "2호선":
+    - {station: 용답, connect_from: 성수}          # 성수지선
+    - {station: 도림천, connect_from: 신도림}      # 신정지선
+  "5호선":
+    - {station: 둔촌동, connect_from: 강동}        # 마천 방면 분기 (직전은 하남검단산 방면 끝)
+
+# CSV 역명 정리 (공백 제거 외에 이름이 다른 경우)
+official_name_fix:
+  신내역: 신내
+
+# 노선 메타: 색, 카카오 검색에 쓰는 노선 표기, 속도 보정(1.0=서울교통공사 평균, 작을수록 빠름)
+lines:
+  "1호선":     {color: "#0052A4", kakao: ["1호선"], factor: 1.0}
+  "2호선":     {color: "#00A84D", kakao: ["2호선"], factor: 1.0}
+  "3호선":     {color: "#EF7C1C", kakao: ["3호선"], factor: 1.0}
+  "4호선":     {color: "#00A5DE", kakao: ["4호선"], factor: 1.0}
+  "5호선":     {color: "#996CAC", kakao: ["5호선"], factor: 1.0}
+  "6호선":     {color: "#CD7C2F", kakao: ["6호선"], factor: 1.0}
+  "7호선":     {color: "#747F00", kakao: ["7호선"], factor: 1.0}
+  "8호선":     {color: "#E6186C", kakao: ["8호선"], factor: 1.0}
+  "9호선":     {color: "#BDB092", kakao: ["9호선"], factor: 0.9}
+  "수인분당선": {color: "#F5A200", kakao: ["수인분당선", "분당선"], factor: 0.9}
+  "신분당선":   {color: "#D4003B", kakao: ["신분당선"], factor: 0.75}
+  "경의중앙선": {color: "#77C4A3", kakao: ["경의중앙선", "경의선", "중앙선"], factor: 0.85}
+  "공항철도":   {color: "#0090D2", kakao: ["공항철도"], factor: 0.8}
+  "경춘선":     {color: "#0C8E72", kakao: ["경춘선"], factor: 0.85}
+  "우이신설선": {color: "#B0CE18", kakao: ["우이신설선", "우이신설경전철"], factor: 1.0}
+  "신림선":     {color: "#6789CA", kakao: ["신림선"], factor: 1.0}
+
+# 환승: 같은 역명이고 노선 노드 사이 거리가 이 값(m) 이하면 환승 가능으로 본다. (예: 신촌 2호선과 경의중앙선은 ~700m라 제외)
+transfer:
+  max_distance_m: 450
+  default_minutes: 4.0            # 도보 + 대기
+  overrides:
+    서울역: 6.0
+    왕십리: 5.0
+    고속터미널: 6.0
+    신도림: 5.0
+    공덕: 5.0
+    동대문역사문화공원: 5.0
+    종로3가: 5.0
+    사당: 4.5
+  # 역명이 달라도 환승되는 쌍: [[노선, 역], [노선, 역]]
+  aliases:
+    - [["4호선", "총신대입구"], ["7호선", "이수"]]
+
+# 직선거리 → 선로 길이 보정, 소요시간 식(분 = a + b × km)은 공식 CSV로 최소제곱 적합해서 쓴다.
+estimate:
+  route_curvature: 1.1
+  min_edge_minutes: 1.0

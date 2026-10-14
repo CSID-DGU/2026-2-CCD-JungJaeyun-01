@@ -102,42 +102,64 @@ def test_invalid_inputs_are_rejected(client):
     assert post(client, [HONGDAE, {**JAMSIL, "lat": 0.0}]).status_code == 422
 
 
-# --------------------------------------------------------------------------- 2단계: 상위 3곳만 확인
-def test_stage2_calls_matrix_once_with_only_the_top_three(client):
+# --------------------------------------------------------------------------- 2단계: 후보 8곳을 확인하고 최종 3곳 선정
+def test_stage2_calls_matrix_once_with_the_shortlist_of_eight(client):
     provider = use(FakeProvider())
     body = post(client, [HONGDAE, JAMSIL, NOWON]).json()
     assert len(provider.matrix_calls) == 1
     origins, destinations = provider.matrix_calls[0]
-    assert len(origins) == 3 and len(destinations) == 3  # 후보 20곳이 아니라 상위 3곳
-    assert provider.route_calls == []                     # 상세 경로는 이름을 눌렀을 때만
+    assert len(origins) == 3 and len(destinations) == 8 == len(set(destinations))  # 후보 20곳이 아니라 상위 8곳
+    assert provider.route_calls == []                                              # 상세 경로는 이름을 눌렀을 때만
+    assert len(body["regions"]) == 3 and body["meta"]["phase2"]["candidates"] == 8  # 최종은 3곳
     assert body["meta"]["phase2"]["status"] == "ok" and body["meta"]["travel_source"] == "google"
     assert all(not p["is_estimated"] for r in body["regions"] for p in r["participants"])
 
 
-def test_actual_minutes_replace_estimates_and_reorder_the_top_three(client):
-    stage1_top = post(client, [HONGDAE, JAMSIL]).json()["regions"][0]["station"]["name"]
-    top_index = {}
+def test_final_ranking_is_decided_by_the_matrix_values_not_the_stage1_estimate(client):
+    # 1단계 7위·4위·2위였던 후보가 실제로는 가장 가까웠던 상황 (예: 버스가 있어서)
+    best = {6: 10.0, 3: 12.0, 1: 15.0}
+    provider = use(FakeProvider(minutes=lambda i, j: best.get(j, 40.0)))
+    body = post(client, [HONGDAE, JAMSIL, NOWON]).json()
+    shortlist = provider.matrix_calls[0][1]  # 1단계 순위 순서
+    assert [r["station"]["name"] for r in body["regions"]] == [shortlist[6], shortlist[3], shortlist[1]]
+    assert [r["stage1_rank"] for r in body["regions"]] == [7, 4, 2]
+    assert [r["rank"] for r in body["regions"]] == [1, 2, 3]
+    assert body["regions"][0]["participants"][0]["minutes"] == 10.0
+    assert "실제 경로 기준 후보 8곳 중" in body["regions"][0]["reason"]
 
-    class Skewed(FakeProvider):
-        def matrix(self, origins, destinations):
-            top_index["j"] = [d.name for d in destinations].index(stage1_top)
-            return super().matrix(origins, destinations)
 
-    # 1단계 1위가 실제로는 한 명에게 매우 먼 곳이었던 상황 (추정이 틀림)
-    use(Skewed(minutes=lambda i, j: 90.0 if (i == 0 and j == top_index.get("j", 0)) else 25.0))
-    regions = post(client, [HONGDAE, JAMSIL]).json()["regions"]
-    assert regions[0]["station"]["name"] != stage1_top
-    moved = next(r for r in regions if r["station"]["name"] == stage1_top)
-    assert moved["participants"][0]["minutes"] == 90.0 and moved["rank"] > 1
+def test_rank_changes_are_logged(client, caplog):
+    caplog.set_level("INFO", logger="app.recommend")
+    # 최종 1위 = 1단계 7위, 최종 2위 = 1단계 2위(유지), 최종 3위 = 1단계 1위, 1단계 3위는 탈락
+    best = {6: 10.0, 1: 15.0, 0: 18.0}
+    use(FakeProvider(minutes=lambda i, j: best.get(j, 40.0)))
+    post(client, [HONGDAE, JAMSIL])
+    lines = [r.getMessage() for r in caplog.records if r.name == "app.recommend"]
+    text = " ".join(lines)
+    assert any("순위 변경" in l and "1단계 7위 → 최종 1위" in l for l in lines)
+    assert any("순위 유지" in l and "2위" in l for l in lines)
+    assert any("순위 변경" in l and "1단계 1위 → 최종 3위" in l for l in lines)
+    assert any("탈락" in l and "1단계 3위" in l for l in lines)
+    assert "지하철 외 경로 덕분일 가능성" in text  # 실제가 추정보다 3분 이상 빨라진 경우
 
 
 def test_estimate_accuracy_is_reported(client):
     use(FakeProvider(minutes=lambda i, j: 30.0))
     acc = post(client, [HONGDAE, JAMSIL, NOWON]).json()["meta"]["estimate_accuracy"]
-    assert len(acc["pairs"]) == 9
+    assert len(acc["pairs"]) == 3 * 8
     diffs = [p["diff_minutes"] for p in acc["pairs"]]
-    assert acc["mae_minutes"] == pytest.approx(sum(abs(d) for d in diffs) / 9, abs=0.15)
+    assert acc["mae_minutes"] == pytest.approx(sum(abs(d) for d in diffs) / len(diffs), abs=0.15)
     assert all(p["actual_minutes"] == 30.0 for p in acc["pairs"])
+
+
+def test_shortlist_size_is_configurable(monkeypatch):
+    from app.config import load_region_config
+
+    assert load_region_config().shortlist_size == 8
+    monkeypatch.setenv("SHORTLIST_SIZE", "5")
+    assert load_region_config.__wrapped__().shortlist_size == 5
+    monkeypatch.setenv("SHORTLIST_SIZE", "2")
+    assert load_region_config.__wrapped__().shortlist_size == 3  # 최종 개수(3)보다 작게는 못 잡는다
 
 
 def test_missing_matrix_cells_fall_back_to_estimates_only_for_those(client):
@@ -201,7 +223,7 @@ def test_one_search_makes_at_most_one_google_matrix_call_and_no_route_calls(goog
     assert first["meta"]["phase2"]["api_calls"] == 1 and first["meta"]["travel_source"] == "google"
     again = c.post("/api/recommend/regions", json=payload).json()
     assert http.count(MATRIX_URL) == 1  # 같은 검색은 캐시 → 호출 0
-    assert again["meta"]["phase2"]["api_calls"] == 0 and again["meta"]["phase2"]["cache_hits"] == 9
+    assert again["meta"]["phase2"]["api_calls"] == 0 and again["meta"]["phase2"]["cache_hits"] == 3 * 8
 
 
 def test_route_detail_is_requested_only_when_asked_and_then_cached(google):
@@ -219,6 +241,22 @@ def test_route_detail_is_requested_only_when_asked_and_then_cached(google):
     assert seg["path"][0][0] == pytest.approx(37.5499, abs=0.01)  # [lat, lng] 순서
     c.post("/api/route", json=body)
     assert http.count(ROUTES_URL) == 1  # 두 번째 클릭은 캐시
+
+
+def test_route_response_contains_bus_segments_like_subway_ones(tmp_path):
+    http = FakeHttp("google_route_bus_naegok_gangnam.json")
+    store = RoutesStore(tmp_path / "bus.sqlite3")
+    provider = GoogleRouteProvider(GoogleClient("test-key", "live", store, SETTINGS, http=http), SETTINGS)
+    app.dependency_overrides[get_route_provider] = lambda: provider
+    app.dependency_overrides[get_routes_store] = lambda: store
+    try:
+        station = next(s for s in load_stations() if s.name == "강남역")
+        r = TestClient(app).post("/api/route", json={"lat": 37.456, "lng": 127.069, "station_id": station.id}).json()
+    finally:
+        app.dependency_overrides.clear()
+    bus = next(s for s in r["route"]["segments"] if s["mode"] == "BUS")
+    assert (bus["lineName"], bus["lineColor"]) == ("741", "#374ff2")  # 버스도 노선명·노선 색을 가진다
+    assert set(bus) == {"mode", "lineName", "lineColor", "from", "to", "minutes", "path"} and len(bus["path"]) > 20
 
 
 def test_route_failure_falls_back_to_a_labelled_estimate_route(client):

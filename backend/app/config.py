@@ -1,6 +1,7 @@
 """backend/config/*.yaml 로딩. 점수 계산 함수에는 여기서 읽은 값을 인자로 넘긴다."""
 
 import json
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -20,6 +21,7 @@ class RegionConfig:
     weights: RegionWeights
     candidate_k: int
     top_n: int
+    shortlist_size: int = 8
 
 
 @dataclass(frozen=True)
@@ -54,6 +56,7 @@ def load_region_config() -> RegionConfig:
         weights=RegionWeights(**raw["weights"]),
         candidate_k=int(raw["candidate_k"]),
         top_n=int(raw["top_n"]),
+        shortlist_size=max(int(raw["top_n"]), int(os.getenv("SHORTLIST_SIZE") or raw["shortlist_size"])),
     )
 
 
@@ -187,4 +190,5 @@ def load_google_settings():
         backoff_seconds=float(raw["retry"]["backoff_seconds"]),
         timeout_seconds=float(raw["timeout_seconds"]),
         cooldown_seconds=float(raw["cooldown_seconds"]),
+        transit_modes=tuple(raw["transit_modes"]),
     )

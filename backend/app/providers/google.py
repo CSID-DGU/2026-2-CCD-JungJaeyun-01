@@ -58,6 +58,7 @@ class GoogleSettings:
     backoff_seconds: float
     timeout_seconds: float
     cooldown_seconds: float
+    transit_modes: tuple[str, ...] = ("BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL")  # 허용할 대중교통 수단 (버스 포함)
 
 
 # ----------------------------------------------------------------------------- 시각·키
@@ -281,7 +282,8 @@ class GoogleRouteProvider(RouteProvider):
 
     def _body(self, departure: datetime) -> dict:
         return {"travelMode": "TRANSIT", "regionCode": "KR",
-                "departureTime": departure.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+                "departureTime": departure.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "transitPreferences": {"allowedTravelModes": list(self.s.transit_modes)}}
 
     # --- 1단계 확인용: 상위 후보까지의 실제 소요시간 (검색당 최대 1회) -----------------
     def matrix(self, origins: Sequence[Coord], destinations: Sequence[Station]) -> MatrixResult:

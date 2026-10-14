@@ -1,8 +1,11 @@
 """지역 추천 흐름 (2단계).
 
-1단계 (API 호출 0): 후보 역 K곳에 대해 지하철 그래프로 참여자별 이동시간을 추정하고 RegionScore로 상위 3곳을 고른다.
-2단계 (검색당 최대 1회 호출): 상위 3곳까지의 실제 소요시간을 경로 API(computeRouteMatrix)로 한 번에 받아
-                            상위 3곳의 평균·최대·편차와 순위를 다시 계산한다. 실패한 칸은 1단계 추정값을 쓰고 '추정'으로 표시한다.
+1단계 (API 호출 0): 후보 역 K곳에 대해 지하철 그래프로 참여자별 이동시간을 추정하고 RegionScore로 상위
+                   shortlist_size(기본 8)곳을 후보로 뽑는다. 그래프에는 버스가 없어서, 버스가 유리한 지역이
+                   1단계에서 탈락하지 않도록 최종 개수(3)보다 넓게 뽑는다.
+2단계 (검색당 최대 1회 호출): 후보 전체까지의 실제 소요시간(버스 포함)을 경로 API(computeRouteMatrix)로 한 번에 받아
+                            평균·최대·편차와 RegionScore를 다시 계산하고 최종 상위 3곳을 정한다.
+                            실패한 칸은 1단계 추정값을 쓰고 '추정'으로 표시한다. 1단계 순위와 달라진 지역은 로그로 남긴다.
 상세 경로(computeRoutes)는 여기서 부르지 않는다: 사용자가 참여자 이름을 누를 때만 /api/route에서 호출한다.
 """
 
@@ -63,6 +66,29 @@ def _accuracy(pairs: list[AccuracyPairOut]) -> AccuracyOut | None:
     )
 
 
+def _log_rank_changes(final_top: Sequence[RegionScore], stage1_rank: dict[str, int],
+                      estimates: dict[str, list[float]], by_id: dict[str, Station]) -> None:
+    """1단계 순위와 최종 순위가 달라진 지역을 로그로 남긴다.
+
+    실제 평균이 추정보다 3분 이상 짧으면 지하철 그래프에 없는 경로(버스 등) 덕분일 가능성을 함께 적는다.
+    경로 API가 이동 수단까지 돌려주지는 않으므로 '가능성'으로만 표현한다.
+    """
+    for rank, r in enumerate(final_top, 1):
+        before = stage1_rank[r.region_id]
+        est_avg = sum(estimates[r.region_id]) / len(estimates[r.region_id])
+        gain = est_avg - r.metrics.avg
+        hint = " (추정보다 빠름: 버스 등 지하철 외 경로 덕분일 가능성)" if gain >= 3.0 else ""
+        if before != rank:
+            logger.info("순위 변경 | %s | 1단계 %d위 → 최종 %d위 | 평균 추정 %.1f분 → 실제 %.1f분%s",
+                        by_id[r.region_id].name, before, rank, est_avg, r.metrics.avg, hint)
+        else:
+            logger.info("순위 유지 | %s | %d위 | 평균 추정 %.1f분 → 실제 %.1f분", by_id[r.region_id].name, rank, est_avg, r.metrics.avg)
+    kept = {r.region_id for r in final_top}
+    for region_id, before in sorted(stage1_rank.items(), key=lambda x: x[1]):
+        if before <= len(final_top) and region_id not in kept:
+            logger.info("탈락 | %s | 1단계 %d위였지만 실제 소요시간 기준으로 최종 %d위 밖", by_id[region_id].name, before, len(final_top))
+
+
 def recommend_regions(
     request: RegionRecommendRequest,
     estimator: TravelEstimator,
@@ -79,10 +105,11 @@ def recommend_regions(
     # --- 1단계: 그래프 추정만으로 후보 전체를 점수화 (API 호출 0) -----------------------
     per_participant = [estimator.estimate(o, candidates) for o in origins]
     estimates = {st.id: [per_participant[i][st.id] for i in range(len(origins))] for st in candidates}
-    stage1 = score_regions(estimates, config.weights)[: config.top_n]
-    top = [by_id[r.region_id] for r in stage1]
+    stage1 = score_regions(estimates, config.weights)[: config.shortlist_size]
+    top = [by_id[r.region_id] for r in stage1]  # 1단계 순위 순서의 후보 (넓게)
+    stage1_rank = {st.id: i for i, st in enumerate(top, 1)}
 
-    # --- 2단계: 상위 후보까지의 실제 소요시간 (검색당 최대 1회 호출) -----------------------
+    # --- 2단계: 후보 전체의 실제 소요시간 (검색당 최대 1회 호출) ---------------------------
     matrix = MatrixResult(minutes=[[None] * len(top) for _ in origins])
     if provider is not None:
         matrix = provider.matrix(origins, top)
@@ -113,9 +140,12 @@ def recommend_regions(
         logger.info("1단계 추정 정확도 | 평균절대오차 %.1f분, 편향 %+.1f분 (%d건)",
                     accuracy.mae_minutes, accuracy.bias_minutes, len(pairs))
 
-    scores = score_regions(final, config.weights)  # 상위 후보끼리 다시 정규화·순위
+    scores = score_regions(final, config.weights)  # 후보끼리 다시 정규화·순위 (실제 소요시간 기준)
     ranks = {attr: _rank_by(scores, attr) for attr in ("avg", "max", "std")}
-    pool = f"실제 경로 기준 상위 {len(scores)}곳 중" if used_actual else f"추정 기준 후보 {len(candidates)}곳 중"
+    pool = f"실제 경로 기준 후보 {len(scores)}곳 중" if used_actual else f"추정 기준 후보 {len(candidates)}곳 중"
+    if used_actual:
+        _log_rank_changes(scores[: config.top_n], stage1_rank, estimates, by_id)
+    scores = scores[: config.top_n]
 
     regions = []
     for i, r in enumerate(scores, 1):
@@ -126,6 +156,7 @@ def recommend_regions(
             station=StationOut(id=st.id, name=st.name, lat=st.coord.lat, lng=st.coord.lng, lines=list(st.lines)),
             score=round(r.score, 4),
             reason=region_reason(i, r.metrics, metric_ranks, pool),
+            stage1_rank=stage1_rank[r.region_id],
             metrics=MetricsOut(avg_minutes=round(r.metrics.avg, 1), max_minutes=round(r.metrics.max, 1),
                                std_minutes=round(r.metrics.std, 1)),
             normalized=NormalizedOut(avg=round(r.normalized.avg, 4), max=round(r.normalized.max, 4),
@@ -156,7 +187,8 @@ def recommend_regions(
             weights=WeightsOut(avg=w.avg, max=w.max, std=w.std),
             travel_source=(provider.name if provider is not None and used_actual else "estimate"),
             phase2=Phase2Out(status=status, reason=reason, provider=provider.name if provider else None,
-                             api_calls=matrix.api_calls, cache_hits=matrix.cache_hits),
+                             api_calls=matrix.api_calls, cache_hits=matrix.cache_hits,
+                             candidates=len(top)),
             estimate_accuracy=accuracy,
         ),
     )

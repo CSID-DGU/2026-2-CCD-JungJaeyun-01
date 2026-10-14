@@ -67,6 +67,7 @@ class RegionOut(BaseModel):
     station: StationOut
     score: float
     reason: str
+    stage1_rank: int          # 1단계(그래프 추정) 순위. 최종 순위와 다르면 실제 경로(버스 포함)가 순위를 바꾼 것
     metrics: MetricsOut
     normalized: NormalizedOut
     metric_ranks: MetricRanksOut
@@ -101,6 +102,7 @@ class Phase2Out(BaseModel):
     provider: str | None
     api_calls: int
     cache_hits: int
+    candidates: int = 0      # 경로 API로 확인한 후보 수 (SHORTLIST_SIZE)
 
 
 class RegionRecommendMeta(BaseModel):

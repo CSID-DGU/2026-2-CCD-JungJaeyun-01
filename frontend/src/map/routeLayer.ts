@@ -16,7 +16,7 @@ interface RouteState {
   legStart: number[]
   legLen: number[]
   total: number
-  dots: { el: HTMLElement; at: number }[]
+  dots: { el: HTMLElement; at: number }[] // 환승 점, 버스 아이콘
   follower: any | null
   finished: boolean
 }
@@ -96,7 +96,7 @@ export class RouteLayer {
       return polyline
     })
 
-    const dots = route.transfers.map((point) => {
+    const dots: { el: HTMLElement; at: number }[] = route.transfers.map((point) => {
       const el = document.createElement('div')
       el.className = `pin-transfer${animate ? ' pre' : ''}`
       el.style.borderColor = route.color
@@ -104,6 +104,16 @@ export class RouteLayer {
       // 환승 지점까지의 누적 거리: 해당 지점이 시작인 구간의 legStart
       const idx = route.legs.findIndex((leg) => leg.path[0] === point)
       return { el, at: idx >= 0 ? legStart[idx] : 0 }
+    })
+
+    // 버스는 지하철처럼 노선 색 실선으로 그리고, 타는 지점에 버스 아이콘을 붙인다.
+    route.busBoardings.forEach(({ legIndex, point, color }) => {
+      const el = document.createElement('div')
+      el.className = `pin-bus${animate ? ' pre' : ''}`
+      el.textContent = '🚌'
+      el.style.borderColor = color
+      this.items.push(overlayAt(this.map, point, el, 4))
+      dots.push({ el, at: legStart[legIndex] })
     })
 
     if (route.estimatedLabel) {

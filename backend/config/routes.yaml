@@ -2,6 +2,8 @@
 departure:
   hour: 18            # 출발 시각: 다음 평일 오후 6시 (KST). 캐시 키의 요일·시간대도 여기서 정해진다.
   utc_offset_hours: 9
+# TRANSIT 요청에서 허용할 대중교통 수단 (버스 포함)
+transit_modes: [BUS, SUBWAY, TRAIN, LIGHT_RAIL]
 cache_ttl_days: 7
 retry:
   max_retries: 1      # 일시 오류(네트워크·5xx·429)만 재시도, 최대 1회

@@ -23,13 +23,16 @@ function shortCategory(category: string): string {
   return (parts.length ? parts : [category]).slice(0, 2).join(' · ')
 }
 
-/** "도보 5분" / "2호선 합정→을지로3가 16분" (0.x분 구간도 최소 1분으로 보여준다) */
+/** 버스 노선명: 숫자·영문 번호는 "472번"처럼, 이미 이름이 있으면 그대로 */
+const busName = (name: string) => (/^[0-9A-Za-z-]+$/.test(name) ? `${name}번` : name)
+
+/** "도보 5분" / "2호선 합정→을지로3가 16분" / "🚌 472번 A→B 12분" (0.x분 구간도 최소 1분으로 보여준다) */
 function segmentText(seg: RouteSegment): string {
   const minutes = Math.max(1, Math.round(seg.minutes))
   if (seg.mode === 'WALK') return `도보 ${minutes}분`
-  const name = seg.lineName ?? (seg.mode === 'BUS' ? '버스' : '지하철')
+  const name = seg.lineName ? (seg.mode === 'BUS' ? busName(seg.lineName) : seg.lineName) : seg.mode === 'BUS' ? '버스' : '지하철'
   const span = seg.from && seg.to ? ` ${seg.from}→${seg.to}` : ''
-  return `${name}${span} ${minutes}분`
+  return `${seg.mode === 'BUS' ? '🚌 ' : ''}${name}${span} ${minutes}분`
 }
 
 function RouteSummary({ entry, color }: { entry: RouteEntry | undefined; color: string }) {
@@ -191,6 +194,15 @@ export default function ResultPanel({
   const purposeLabel = PURPOSE_OPTIONS.find((o) => o.value === data.meta.purpose)?.label ?? ''
   const hasEstimate = data.regions.some((r) => r.participants.some((p) => p.is_estimated))
   const { phase2, travel_source: travelSource } = data.meta
+  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+  const estimateAvg = avg(region.participants.map((p) => p.estimate_minutes ?? p.minutes))
+  const gain = estimateAvg - avg(region.participants.map((p) => p.minutes))
+  // 1단계(그래프 추정, 버스 없음) 순위와 달라졌다면 실제 경로가 순위를 바꾼 것이다.
+  const rankChange =
+    travelSource !== 'estimate' && region.stage1_rank !== region.rank
+      ? `추정 ${region.stage1_rank}위 → 실제 경로 반영 ${region.rank}위` +
+        (gain >= 3 ? ` · 추정보다 평균 ${Math.round(gain)}분 빠름 (버스 등 지하철 외 경로 가능성)` : '')
+      : null
 
   return (
     <div className="result">
@@ -230,8 +242,9 @@ export default function ResultPanel({
         <p className={`source-line${travelSource === 'estimate' ? ' estimate' : ''}`}>
           {travelSource === 'estimate'
             ? '이동시간: 지하철 그래프 추정값'
-            : `이동시간: ${travelSource === 'google' ? 'Google' : 'ODsay'} 실제 경로 기준 (상위 ${data.regions.length}곳 재계산)`}
+            : `이동시간: ${travelSource === 'google' ? 'Google' : 'ODsay'} 실제 경로 기준 (후보 ${phase2.candidates}곳 중 최종 ${data.regions.length}곳)`}
         </p>
+        {rankChange && <p className="rank-change">{rankChange}</p>}
         <p className="reason">{region.reason}</p>
 
         <TravelBars

@@ -80,6 +80,8 @@ export interface Region {
   station: { id: string; name: string; lat: number; lng: number; lines: string[] }
   score: number
   reason: string
+  /** 1단계(지하철 그래프 추정) 순위. 최종 순위와 다르면 실제 경로(버스 포함)가 순위를 바꾼 것 */
+  stage1_rank: number
   metrics: { avg_minutes: number; max_minutes: number; std_minutes: number }
   participants: ParticipantTravel[]
   places: Place[]
@@ -91,6 +93,8 @@ export interface Phase2 {
   provider: string | null
   api_calls: number
   cache_hits: number
+  /** 경로 API로 확인한 후보 수 */
+  candidates: number
 }
 
 export interface EstimateAccuracy {

@@ -1072,3 +1072,32 @@ input.selected {
 .dev-usage strong {
   color: #fff;
 }
+
+/* 버스: 지하철처럼 노선 색 실선 + 타는 지점의 버스 아이콘 */
+.pin-bus {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--navy);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.pin-bus.pre {
+  visibility: hidden;
+}
+
+.route-legs .leg.bus {
+  border-left-style: solid;
+}
+
+.rank-change {
+  margin-top: 4px;
+  color: #1b6b45;
+  font-size: 12px;
+  font-weight: 600;
+}

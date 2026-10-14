@@ -1,0 +1,129 @@
+{
+ "kind": "route",
+ "key": "r|37.4560,127.0690|21160803|weekday-18",
+ "recordedAt": "2026-10-14T16:03:20.038475+00:00",
+ "request": {
+  "travelMode": "TRANSIT",
+  "regionCode": "KR",
+  "departureTime": "2026-10-16T09:00:00Z",
+  "transitPreferences": {
+   "allowedTravelModes": [
+    "BUS",
+    "SUBWAY",
+    "TRAIN",
+    "LIGHT_RAIL"
+   ]
+  },
+  "origin": {
+   "location": {
+    "latLng": {
+     "latitude": 37.456,
+     "longitude": 127.069
+    }
+   }
+  },
+  "destination": {
+   "location": {
+    "latLng": {
+     "latitude": 37.49808633653005,
+     "longitude": 127.02800140627488
+    }
+   }
+  },
+  "languageCode": "ko"
+ },
+ "response": {
+  "routes": [
+   {
+    "legs": [
+     {
+      "steps": [
+       {
+        "staticDuration": "200s",
+        "polyline": {
+         "encodedPolyline": "_srcFgdqfWcF}I"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "940s",
+        "polyline": {
+         "encodedPolyline": "czrcFeoqfWtEbSzAtF\\hBLhCEfCQhByAhFyTxq@yDjLyDzL{@fCaCzHuDzJwCfE}OhQmCvCcBbB_InHQJqCx@{Bb@yARgBDoACq@@yBGeDTmKQ}FBmEC_D^_D|@mAb@_Af@wEzCaH`HcGtGm@b@_HnCeQxG}IzCuYxKHb@"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "신분당선강남역",
+           "location": {
+            "latLng": {
+             "latitude": 37.4949266,
+             "longitude": 127.0289232
+            }
+           }
+          },
+          "arrivalTime": "2026-10-16T09:29:00Z",
+          "departureStop": {
+           "name": "샘마을.서울특별시어린이병원",
+           "location": {
+            "latLng": {
+             "latitude": 37.457136,
+             "longitude": 127.070748
+            }
+           }
+          },
+          "departureTime": "2026-10-16T09:13:20Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:29"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 6:13"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "진관차고지",
+         "headway": "600s",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울특별시버스운송사업조합",
+            "uri": "http://www.odsay.com/Bus/Seoul_Main.asp?CID=1000&LMenu=1"
+           }
+          ],
+          "name": "서울 간선버스",
+          "color": "#374ff2",
+          "nameShort": "741",
+          "textColor": "#ffffff",
+          "vehicle": {
+           "name": {
+            "text": "버스"
+           },
+           "type": "BUS",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/bus2.png"
+          }
+         },
+         "stopCount": 10
+        },
+        "travelMode": "TRANSIT"
+       },
+       {
+        "staticDuration": "361s",
+        "polyline": {
+         "encodedPolyline": "ifzcFwiifWwRvD"
+        },
+        "travelMode": "WALK"
+       }
+      ]
+     }
+    ],
+    "duration": "2101s"
+   }
+  ]
+ }
+}

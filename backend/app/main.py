@@ -1,8 +1,18 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import settings
 from app.routers import diagnostics, recommend, search
+
+# 앱 로그(추정 vs 실제 차이, 순위 변경, 경로 API 호출·오류)를 INFO까지 콘솔에 남긴다. uvicorn은 자기 로거만 설정한다.
+_app_logger = logging.getLogger("app")
+_app_logger.setLevel(logging.INFO)
+if not _app_logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s:     [%(name)s] %(message)s"))
+    _app_logger.addHandler(_handler)
 
 app = FastAPI(title="Meetup Recommender API")
 

@@ -104,6 +104,19 @@ class TestConvertRoute:
         assert transit[0].line_color is None and transit[1].line_color == "#003499"
         assert all(s.mode == SUBWAY for s in transit) and route.transfers == 1
 
+    def test_real_bus_route_keeps_line_name_color_stops_and_path(self):
+        resp, origin, dest = load("bus_naegok_gangnam")  # 서초구 내곡동(역에서 1.5km) → 강남역, 버스 741
+        route = convert_route(resp, origin, dest)
+        assert (route.source, route.total_minutes, route.transfers) == ("google", 35, 0)
+        assert [s.mode for s in route.segments] == [WALK, BUS, WALK]
+        bus = route.segments[1]
+        assert (bus.line_name, bus.line_color) == ("741", "#374ff2")
+        assert bus.from_name and bus.to_name and bus.to_name.endswith("강남역")
+        assert bus.minutes == pytest.approx(15.7, abs=0.1) and len(bus.path) > 20                       # 정류장이 아니라 실제 도로를 따라가는 선
+        assert route.segments[0].path[0] == (origin.lat, origin.lng)           # 출발지에서 시작
+        assert route.segments[0].path[-1] == bus.path[0] and bus.path[-1] == route.segments[2].path[0]
+        assert route.segments[2].path[-1] == (dest.lat, dest.lng)              # 도착역에서 끝
+
     def test_bus_vehicle_maps_to_bus(self):
         resp = {"routes": [{"duration": "600s", "legs": [{"steps": [{
             "travelMode": "TRANSIT", "staticDuration": "600s",
@@ -182,12 +195,14 @@ def test_matrix_request_uses_transit_future_departure_and_minimal_field_mask(tmp
     assert req["headers"]["X-Goog-FieldMask"] == MATRIX_FIELD_MASK == "originIndex,destinationIndex,duration,condition,status"
     assert req["json"]["travelMode"] == "TRANSIT" and req["json"]["departureTime"] == "2026-10-16T09:00:00Z"  # 금 18시 KST
     assert len(req["json"]["origins"]) == 2 and len(req["json"]["destinations"]) == 2
+    assert req["json"]["transitPreferences"]["allowedTravelModes"] == ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL"]  # 버스 포함
 
 
 def test_route_request_uses_the_minimal_field_mask(tmp_path):
     p, _, http = provider(tmp_path, ScriptedHttp(ROUTE_OK))
     p.route(HAPJEONG, EULJIRO)
     assert http.requests[0]["url"] == ROUTES_URL and http.requests[0]["headers"]["X-Goog-FieldMask"] == ROUTES_FIELD_MASK
+    assert "BUS" in http.requests[0]["json"]["transitPreferences"]["allowedTravelModes"]
     assert "distanceMeters" not in ROUTES_FIELD_MASK  # 쓰지 않는 필드는 요청하지 않는다
 
 

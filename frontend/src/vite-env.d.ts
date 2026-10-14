@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly KAKAO_JS_API_KEY?: string
+  readonly VITE_KAKAO_JS_KEY?: string
 }
 
 interface ImportMeta {

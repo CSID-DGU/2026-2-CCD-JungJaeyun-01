@@ -30,6 +30,16 @@ export function searchPlaces(query: string, signal: AbortSignal): Promise<PlaceH
   return request(`/api/search/places?query=${encodeURIComponent(query)}`, { signal })
 }
 
+export interface MapDiagnosis {
+  code: string
+  message: string
+}
+
+/** 지도 SDK 로드에 실패했을 때, 백엔드가 원인(도메인 미등록/키 오류/카카오맵 미사용 설정)을 알려준다. */
+export function diagnoseKakaoMap(): Promise<MapDiagnosis> {
+  return request(`/api/diagnostics/kakao-map?origin=${encodeURIComponent(window.location.origin)}`)
+}
+
 export function recommend(body: RecommendRequest): Promise<RecommendResponse> {
   return request('/api/recommend', {
     method: 'POST',

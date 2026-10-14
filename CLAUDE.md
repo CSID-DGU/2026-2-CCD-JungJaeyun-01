@@ -27,8 +27,8 @@ meetup-recommender/
 
 ### API 키
 - 외부 API 키는 **백엔드에서만** 사용한다. 프론트에서 외부 API(ODsay, 카카오 로컬, Google Places 등)를 직접 호출하지 않고 반드시 백엔드를 거친다.
-- 예외: **카카오맵 JavaScript 키(`KAKAO_JS_API_KEY`)만** 프론트에서 사용한다.
-  - `frontend/vite.config.ts`의 `envPrefix: ['KAKAO_JS_']` 때문에 이 키만 프론트 번들에 노출된다. prefix를 넓히거나 다른 키를 프론트에 추가하지 않는다.
+- 예외: **카카오맵 JavaScript 키(`VITE_KAKAO_JS_KEY`)만** 프론트에서 사용한다.
+  - `frontend/vite.config.ts`의 `envPrefix: ['VITE_KAKAO_JS_']` 때문에 이 키만 프론트 번들에 노출된다. prefix를 넓히거나 다른 키를 프론트에 추가하지 않는다.
 - API 키는 루트의 `.env`로 관리한다. `.env`는 `.gitignore`에 포함되어 있으며 절대 커밋하지 않는다.
 - 새 환경변수를 추가하면 `.env.example`에도 빈 값과 설명을 함께 추가한다.
 

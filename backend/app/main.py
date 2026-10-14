@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import settings
-from app.routers import recommend, search
+from app.routers import diagnostics, recommend, search
 
 app = FastAPI(title="Meetup Recommender API")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(recommend.router)
 app.include_router(search.router)
+app.include_router(diagnostics.router)
 
 
 @app.get("/health")

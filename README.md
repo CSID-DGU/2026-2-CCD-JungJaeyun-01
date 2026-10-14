@@ -42,7 +42,7 @@ cp .env.example .env
 | 변수 | 용도 | 발급처 |
 |---|---|---|
 | `KAKAO_REST_API_KEY` | 장소 검색, 출발지 자동완성 (백엔드 전용) | [Kakao Developers](https://developers.kakao.com) → 내 애플리케이션 → 앱 키 → **REST API 키** |
-| `KAKAO_JS_API_KEY` | 지도 표시 (프론트에서 쓰는 유일한 키) | 같은 화면의 **JavaScript 키** |
+| `VITE_KAKAO_JS_KEY` | 지도 표시 (프론트에서 쓰는 유일한 키) | 같은 화면의 **JavaScript 키** |
 | `ODSAY_API_KEY` | 대중교통 이동시간 (백엔드 전용) | [ODsay LAB](https://lab.odsay.com) → 회원가입 후 애플리케이션 등록 → API 키 |
 | `GOOGLE_PLACES_API_KEY` | (선택) 평점·리뷰 수 (백엔드 전용) | [Google Cloud Console](https://console.cloud.google.com) → **Places API (New)** 사용 설정 → 사용자 인증 정보 → API 키 |
 | `USE_MOCK` | `true`: ODsay·장소 검색·평점을 가짜 데이터로 대체 / `false`: 실제 API 호출 | - |
@@ -50,7 +50,9 @@ cp .env.example .env
 카카오 설정에서 꼭 확인할 것:
 
 1. 앱의 **카카오맵** 사용 설정을 ON으로 바꿉니다 (꺼져 있으면 장소 검색이 403).
-2. 앱의 **플랫폼 → Web 사이트 도메인**에 `http://localhost:5173`을 등록합니다 (없으면 지도가 뜨지 않음).
+2. 앱의 **플랫폼 → Web 사이트 도메인**에 `http://localhost:5173`을 등록합니다 (없으면 지도가 뜨지 않음). `http://127.0.0.1:5173`으로 접속하려면 이것도 등록하고 프론트를 `npm run dev -- --host 127.0.0.1`로 실행하세요.
+
+지도가 뜨지 않으면 화면에 원인(도메인 미등록 / 키 오류 / REST 키 사용 / 카카오맵 미사용 설정)이 표시됩니다. `.env`를 바꾼 뒤에는 프론트 개발 서버를 다시 시작해야 합니다.
 
 참고:
 
@@ -108,4 +110,5 @@ python scripts/demo_recommend.py            # 홍대입구·잠실·노원 추�
 - `POST /api/recommend` — 참여자 2~5명(이름, 출발지 좌표, 연령대)과 목적(`meal` | `cafe` | `drink`)을 받아 상위 3개 지역, 지역별 이동시간 지표, 지역별 장소 5곳을 반환
 - `POST /api/recommend/regions` — 지역 추천만
 - `GET /api/search/places?query=` — 출발지 자동완성 (카카오 키워드 검색 프록시)
+- `GET /api/diagnostics/kakao-map?origin=` — 지도 SDK 로드 실패 원인 진단 (화면의 안내 문구용)
 - `GET /health`

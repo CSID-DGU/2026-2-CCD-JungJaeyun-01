@@ -5,7 +5,7 @@ import { loadKakaoMaps } from '../kakaoLoader'
 import { buildDrawable, routePoints } from '../map/geometry'
 import { MapMotion, computeFitTarget, prefersReducedMotion, type Padding } from '../map/motion'
 import { RouteLayer } from '../map/routeLayer'
-import type { MotionRequest, RouteSelection, ViewMode } from '../map/types'
+import type { MotionRequest, RouteSelection, SegmentFocus, ViewMode } from '../map/types'
 import { routeKey, type RouteEntries } from '../routes'
 import type { LatLng, Place, Region } from '../types'
 
@@ -24,6 +24,10 @@ interface Props {
   routeSelection: RouteSelection
   /** 이름을 눌러 불러온 참여자별 상세 경로 */
   routes: RouteEntries
+  /** 타임라인에서 고른 구간 (그 구간만 강조하고 그 구간으로 이동) */
+  segmentFocus: SegmentFocus | null
+  /** 지도에 경로 그리기를 시작하는 순간 알린다 (타임라인 등장 모션을 같은 시점에 시작하려고) */
+  onRouteDrawStart?: (participants: number[], staggerMs: number) => void
   viewMode: ViewMode
   /** 연출을 일으킨 동작. id가 바뀔 때마다 해당 동작의 이동·연출을 한 번 실행한다. */
   motion: MotionRequest
@@ -59,7 +63,7 @@ function drawablesFor(p: Props) {
   if (!region || p.origins.length !== region.participants.length) return []
   return selectedIndexes(p).flatMap((i) => {
     const entry = p.routes[routeKey(region.station.id, i)]
-    return entry?.status === 'ok' ? [buildDrawable(entry.route, p.origins[i].color)] : []
+    return entry?.status === 'ok' ? [buildDrawable(entry.route, p.origins[i].color, i)] : []
   })
 }
 
@@ -262,6 +266,7 @@ export default function MapView(props: Props) {
     const drawRoutes = async (p: Props) => {
       const drawables = drawablesFor(p)
       const stagger = drawables.length > 1 ? Math.min(200, 400 / (drawables.length - 1)) : 0
+      p.onRouteDrawStart?.(drawables.map((d) => d.participant), stagger)
       await routes.draw(drawables, { animate: !reduced, durationMs: DRAW_MS, staggerMs: stagger })
     }
 
@@ -329,6 +334,19 @@ export default function MapView(props: Props) {
           if (!(await fit(routeViewPoints(p)))) return
           await drawRoutes(p)
           break
+        case 'segment': { // 타임라인의 구간 클릭: 그 구간만 강조하고 그 구간으로 이동 (다시 누르면 경로 전체로)
+          const focus = p.segmentFocus
+          if (!focus) {
+            routes.highlight(null, null)
+            await fit(routeViewPoints(p))
+            break
+          }
+          const leg = drawablesFor(p).find((d) => d.participant === focus.participant)?.legs[focus.segment]
+          if (!leg) break
+          routes.highlight(focus.participant, focus.segment)
+          await fit(leg.path)
+          break
+        }
         case 'view': // 전체 보기 ↔ 선택 지역 확대
           await fit(
             p.viewMode === 'overview'

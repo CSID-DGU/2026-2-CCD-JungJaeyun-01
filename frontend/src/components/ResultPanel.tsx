@@ -1,7 +1,8 @@
 import { PARTICIPANT_COLORS, PURPOSE_OPTIONS } from '../constants'
-import type { RouteSelection } from '../map/types'
+import type { RouteSelection, SegmentFocus } from '../map/types'
 import { routeKey, type RouteEntries, type RouteEntry } from '../routes'
-import type { Place, RecommendResponse, Region, RouteSegment } from '../types'
+import type { ParticipantTravel, Place, RecommendResponse, Region, Route } from '../types'
+import RouteTimeline, { LineBadge, type TimelinePlay } from './RouteTimeline'
 
 interface Props {
   data: RecommendResponse
@@ -9,9 +10,17 @@ interface Props {
   selectedPlaceId: string | null
   routeSelection: RouteSelection
   routes: RouteEntries
+  /** 참여자 순서대로의 출발지 이름·주소 (타임라인의 출발지 줄) */
+  origins: { name: string; address: string }[]
+  /** 지도에서 경로 그리기가 시작된 시점 (타임라인 등장 모션을 맞춘다). 키는 routeKey */
+  plays: Record<string, TimelinePlay>
+  segmentFocus: SegmentFocus | null
   onSelectRegion: (index: number) => void
   onSelectPlace: (id: string | null) => void
   onSelectRoute: (selection: RouteSelection) => void
+  onFocusSegment: (participant: number, segment: number | null) => void
+  /** "실제 경로 불러오기" 버튼 */
+  onLoadRoute: (participant: number) => void
   onBack: () => void
 }
 
@@ -23,57 +32,93 @@ function shortCategory(category: string): string {
   return (parts.length ? parts : [category]).slice(0, 2).join(' · ')
 }
 
-/** 버스 노선명: 숫자·영문 번호는 "472번"처럼, 이미 이름이 있으면 그대로 */
-const busName = (name: string) => (/^[0-9A-Za-z-]+$/.test(name) ? `${name}번` : name)
-
-/** "도보 5분" / "2호선 합정→을지로3가 16분" / "🚌 472번 A→B 12분" (0.x분 구간도 최소 1분으로 보여준다) */
-function segmentText(seg: RouteSegment): string {
-  const minutes = Math.max(1, Math.round(seg.minutes))
-  if (seg.mode === 'WALK') return `도보 ${minutes}분`
-  const name = seg.lineName ? (seg.mode === 'BUS' ? busName(seg.lineName) : seg.lineName) : seg.mode === 'BUS' ? '버스' : '지하철'
-  const span = seg.from && seg.to ? ` ${seg.from}→${seg.to}` : ''
-  return `${seg.mode === 'BUS' ? '🚌 ' : ''}${name}${span} ${minutes}분`
+/** 추정 경로(지하철 그래프)를 구간별 배지로 간단히 보여준다. 시각이 없어서 타임라인 대신 쓴다. */
+function EstimateFlow({ route, color }: { route: Route; color: string }) {
+  return (
+    <ol className="tl-flow" aria-label="추정 경로 구간">
+      {route.segments.map((seg, i) => (
+        <li key={i}>
+          {seg.mode === 'WALK' ? (
+            <span className="flow-walk"><span aria-hidden="true">🚶</span><small>{Math.max(1, Math.round(seg.minutes))}분</small></span>
+          ) : (
+            <LineBadge seg={seg} fallbackColor={color} />
+          )}
+        </li>
+      ))}
+    </ol>
+  )
 }
 
-function RouteSummary({ entry, color }: { entry: RouteEntry | undefined; color: string }) {
-  if (!entry) return null // 아직 요청 전 (닫힌 행)
+interface DetailProps {
+  entry: RouteEntry | undefined
+  travel: ParticipantTravel
+  index: number
+  color: string
+  origin: { name: string; address: string }
+  destinationName: string
+  meetingTime: string
+  play: TimelinePlay | undefined
+  segmentFocus: SegmentFocus | null
+  onFocusSegment: (participant: number, segment: number | null) => void
+  onLoadRoute: (participant: number) => void
+}
+
+/** 참여자 행을 펼쳤을 때의 내용: 안내(추정) / 불러오는 중 / 오류 / 타임라인 */
+function RouteDetail({ entry, travel, index, color, origin, destinationName, meetingTime, play, segmentFocus, onFocusSegment, onLoadRoute }: DetailProps) {
+  const loadButton = (label: string) => (
+    <button type="button" className="btn ghost load-route" onClick={() => onLoadRoute(index)}>{label}</button>
+  )
+  if (!entry) {
+    if (!travel.is_estimated) return null // 곧 자동으로 불러온다
+    // 1단계 추정값만 있는 참여자: 실제 경로를 아직 조회하지 않았다.
+    return (
+      <div className="route-summary guidance">
+        <p className="route-note">실제 경로 조회 전</p>
+        <p className="route-hint">지하철 기준 추정 약 {fmt(travel.estimate_minutes ?? travel.minutes)}분이에요. 실제 경로는 환승·버스·시각표에 따라 달라질 수 있어요.</p>
+        {loadButton('실제 경로 불러오기')}
+      </div>
+    )
+  }
   if (entry.status === 'loading') {
     return (
       <div className="route-summary">
-        <p className="route-loading">
-          <span className="spinner small" /> 경로를 불러오는 중…
-        </p>
+        <p className="route-loading"><span className="spinner small" /> 경로를 불러오는 중…</p>
       </div>
     )
   }
   if (entry.status === 'error') {
     return (
-      <div className="route-summary">
+      <div className="route-summary guidance">
         <p className="route-note">경로를 불러오지 못했어요</p>
         <p className="route-hint">{entry.message}</p>
+        {loadButton('실제 경로 다시 불러오기')}
       </div>
     )
   }
-  const { route, note } = entry
-  const estimated = route.source === 'estimate'
+  if (entry.route.source === 'estimate') {
+    // 실제 경로 조회에 실패해 추정 경로로 대체된 경우: 시각을 모르니 타임라인 대신 안내만 한다.
+    return (
+      <div className="route-summary guidance">
+        <p className="route-note">실제 경로를 불러오지 못했어요 · 지하철 기준 추정 약 {entry.route.totalMinutes}분</p>
+        {entry.note && <p className="route-hint">{entry.note}</p>}
+        <EstimateFlow route={entry.route} color={color} />
+        {loadButton('실제 경로 다시 불러오기')}
+      </div>
+    )
+  }
   return (
-    <div className="route-summary">
-      <p className="route-total">
-        총 {route.totalMinutes}분 · 환승 {route.transfers}회
-        <em className={`badge${estimated ? '' : ' source'}`}>{estimated ? '추정 경로' : route.source === 'google' ? 'Google 실제 경로' : 'ODsay 경로'}</em>
-      </p>
-      <ol className="route-legs" aria-label="구간">
-        {route.segments.map((seg, i) => (
-          <li
-            key={i}
-            className={`leg ${seg.mode.toLowerCase()}`}
-            style={{ borderColor: seg.mode === 'WALK' ? color : (seg.lineColor ?? color) }}
-          >
-            {segmentText(seg)}
-          </li>
-        ))}
-      </ol>
-      {note && <p className="route-hint">{note}</p>}
+    <div className="route-summary timeline-summary">
+      <RouteTimeline
+        route={entry.route}
+        color={color}
+        originName={origin.name}
+        originAddress={origin.address}
+        destinationName={destinationName}
+        meetingTime={meetingTime}
+        focusedSegment={segmentFocus?.participant === index ? segmentFocus.segment : null}
+        onFocusSegment={(segment) => onFocusSegment(index, segment)}
+        play={play ?? null}
+      />
     </div>
   )
 }
@@ -83,13 +128,25 @@ function TravelBars({
   maxMinutes,
   routeSelection,
   routes,
+  origins,
+  meetingTime,
+  plays,
+  segmentFocus,
   onSelectRoute,
+  onFocusSegment,
+  onLoadRoute,
 }: {
   region: Region
   maxMinutes: number
   routeSelection: RouteSelection
   routes: RouteEntries
+  origins: { name: string; address: string }[]
+  meetingTime: string
+  plays: Record<string, TimelinePlay>
+  segmentFocus: SegmentFocus | null
   onSelectRoute: (selection: RouteSelection) => void
+  onFocusSegment: (participant: number, segment: number | null) => void
+  onLoadRoute: (participant: number) => void
 }) {
   return (
     <>
@@ -132,7 +189,19 @@ function TravelBars({
               </button>
               <div className="route-detail" aria-hidden={!open}>
                 <div className="route-detail-inner">
-                  <RouteSummary entry={open ? routes[routeKey(region.station.id, i)] : undefined} color={PARTICIPANT_COLORS[i]} />
+                  <RouteDetail
+                    entry={open ? routes[routeKey(region.station.id, i)] : undefined}
+                    travel={p}
+                    index={i}
+                    color={PARTICIPANT_COLORS[i]}
+                    origin={origins[i] ?? { name: p.name, address: '' }}
+                    destinationName={region.station.name}
+                    meetingTime={meetingTime}
+                    play={plays[routeKey(region.station.id, i)]}
+                    segmentFocus={segmentFocus}
+                    onFocusSegment={onFocusSegment}
+                    onLoadRoute={onLoadRoute}
+                  />
                 </div>
               </div>
             </li>
@@ -184,9 +253,14 @@ export default function ResultPanel({
   selectedPlaceId,
   routeSelection,
   routes,
+  origins,
+  plays,
+  segmentFocus,
   onSelectRegion,
   onSelectPlace,
   onSelectRoute,
+  onFocusSegment,
+  onLoadRoute,
   onBack,
 }: Props) {
   const region = data.regions[selectedRegion]
@@ -252,7 +326,13 @@ export default function ResultPanel({
           maxMinutes={maxMinutes}
           routeSelection={routeSelection}
           routes={routes}
+          origins={origins}
+          meetingTime={data.meta.meeting_time}
+          plays={plays}
+          segmentFocus={segmentFocus}
           onSelectRoute={onSelectRoute}
+          onFocusSegment={onFocusSegment}
+          onLoadRoute={onLoadRoute}
         />
 
         <dl className="metrics">

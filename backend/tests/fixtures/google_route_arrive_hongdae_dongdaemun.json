@@ -1,0 +1,135 @@
+{
+ "origin": "홍대입구역",
+ "destination": "동대문역사문화공원역",
+ "origin_latlng": [
+  37.556871,
+  126.923779
+ ],
+ "destination_latlng": [
+  37.56566440553802,
+  127.00900417014896
+ ],
+ "request_body": {
+  "travelMode": "TRANSIT",
+  "arrivalTime": "2026-10-17T09:00:00Z",
+  "transitPreferences": {
+   "allowedTravelModes": [
+    "BUS",
+    "SUBWAY",
+    "TRAIN",
+    "LIGHT_RAIL"
+   ]
+  },
+  "languageCode": "ko"
+ },
+ "response": {
+  "routes": [
+   {
+    "legs": [
+     {
+      "steps": [
+       {
+        "distanceMeters": 30,
+        "staticDuration": "31s",
+        "polyline": {
+         "encodedPolyline": "mifdFsxteWGcA"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "30s",
+        "polyline": {
+         "encodedPolyline": "uifdFwzteW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "staticDuration": "0s",
+        "polyline": {
+         "encodedPolyline": "uifdFwzteW"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "distanceMeters": 14,
+        "staticDuration": "28s",
+        "polyline": {
+         "encodedPolyline": "uifdFwzteWUR"
+        },
+        "travelMode": "WALK"
+       },
+       {
+        "distanceMeters": 7971,
+        "staticDuration": "1020s",
+        "polyline": {
+         "encodedPolyline": "kjfdFczteWoGoJSa@UaAIw@@w@Jy@hSwv@P_AHs@?k@IoAeF{TKq@Eo@sDmyACgBTaQQ{AWwAi@qB]{@oGiN_BuDwGeMg@sAa@qA]}AmAcIcCoQqAcHwCsLa@eAgBuCqAgAe@Yy@}@W_@s@cB[{AIaACaAAuIIoIEeBOg\\MkKo@}ZUmNy@k_@DgA|C_\\VgBv@{DCA"
+        },
+        "transitDetails": {
+         "stopDetails": {
+          "arrivalStop": {
+           "name": "동대문역사문화공원",
+           "location": {
+            "latLng": {
+             "latitude": 37.565681999999995,
+             "longitude": 127.00895299999999
+            }
+           }
+          },
+          "arrivalTime": "2026-10-17T09:00:00Z",
+          "departureStop": {
+           "name": "홍대입구",
+           "location": {
+            "latLng": {
+             "latitude": 37.557016,
+             "longitude": 126.924019
+            }
+           }
+          },
+          "departureTime": "2026-10-17T08:43:00Z"
+         },
+         "localizedValues": {
+          "arrivalTime": {
+           "time": {
+            "text": "오후 6:00"
+           },
+           "timeZone": "Asia/Seoul"
+          },
+          "departureTime": {
+           "time": {
+            "text": "오후 5:43"
+           },
+           "timeZone": "Asia/Seoul"
+          }
+         },
+         "headsign": "신도림역 방면",
+         "transitLine": {
+          "agencies": [
+           {
+            "name": "서울메트로",
+            "uri": "http://www.seoulmetro.co.kr/"
+           }
+          ],
+          "name": "서울 지하철 2호선",
+          "color": "#35b12b",
+          "nameShort": "2호선",
+          "textColor": "#ffffff",
+          "vehicle": {
+           "name": {
+            "text": "지하철"
+           },
+           "type": "SUBWAY",
+           "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
+          }
+         },
+         "stopCount": 9
+        },
+        "travelMode": "TRANSIT"
+       }
+      ]
+     }
+    ],
+    "duration": "1109s"
+   }
+  ]
+ }
+}

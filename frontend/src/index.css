@@ -1101,3 +1101,345 @@ input.selected {
   font-size: 12px;
   font-weight: 600;
 }
+
+/* ---------- 약속 시간 입력 ---------- */
+.field.meeting {
+  margin-top: 14px;
+}
+
+.field.meeting input[type='datetime-local'] {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #cfd4dc;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.field .hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- 경로 타임라인 (구글맵 대중교통 상세처럼) ---------- */
+.route-summary.timeline-summary {
+  padding: 4px 0;
+  background: transparent;
+}
+
+.route-summary.guidance {
+  background: #fffaf0;
+  border: 1px solid #f1dfae;
+}
+
+.load-route {
+  margin-top: 8px;
+}
+
+.tl-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.tl-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.tl-headline strong {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-arrow,
+.tl-total {
+  color: var(--muted);
+}
+
+.tl-total {
+  font-size: 13px;
+}
+
+.tl-meeting {
+  color: #1b6b45;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tl-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tl-flow li:not(:last-child)::after {
+  content: '›';
+  margin-left: 4px;
+  color: var(--muted);
+}
+
+.flow-walk {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.flow-walk small {
+  color: var(--muted);
+}
+
+.line-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.tl-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tl {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tl-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px 18px 1fr;
+  column-gap: 8px;
+}
+
+.tl-time {
+  padding-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tl-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.tl-dot {
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  margin-top: 4px;
+  border: 3px solid var(--navy);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.tl-node.end .tl-dot {
+  width: 15px;
+  height: 15px;
+  margin-top: 3px;
+  border-width: 4px;
+}
+
+.tl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.tl-body strong {
+  font-size: 14px;
+}
+
+.tl-body small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 구간 선: 지도 위 경로 선과 같은 색 (--leg). 도보는 점선, 대중교통은 실선 */
+.tl-leg .tl-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  border-radius: 3px;
+  background: var(--leg);
+  transform-origin: top;
+  transition: width 0.15s, opacity 0.15s;
+}
+
+.tl-leg.walk .tl-line {
+  width: 0;
+  border-left: 4px dotted var(--leg);
+  border-radius: 0;
+  background: none;
+}
+
+.tl-leg.selected .tl-line {
+  width: 8px;
+}
+
+.tl-leg.walk.selected .tl-line {
+  width: 0;
+  border-left-width: 6px;
+}
+
+.tl-leg.dim .tl-line,
+.tl-leg.dim .tl-body {
+  opacity: 0.35;
+}
+
+.tl-leg-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tl-leg-btn:hover {
+  background: var(--primary-soft);
+}
+
+.tl-leg.selected .tl-leg-btn {
+  border-color: var(--leg);
+  background: #f7f8fa;
+}
+
+.tl-leg-btn:focus-visible,
+.tl-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.tl-transit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tl-headsign {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tl-transit-meta,
+.tl-walk {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tl-toggle {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border: 0;
+  background: none;
+  color: var(--primary-dark);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tl-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.tl-collapse.open {
+  grid-template-rows: 1fr;
+}
+
+.tl-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tl-stops {
+  padding: 2px 8px 4px;
+}
+
+.tl-stops ol {
+  margin: 2px 0 4px;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--leg);
+  list-style: none;
+  columns: 2;
+}
+
+.tl-stops li {
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.tl-stops small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* 등장 모션: 지도 경로 그리기가 시작될 때(.play) 선이 위에서 아래로 그려지며 지점이 순서대로 나타난다 (전체 약 1초) */
+@keyframes tl-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes tl-draw {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.tl:not(.play) .tl-item {
+  opacity: 0;
+}
+
+.tl.play .tl-item {
+  animation: tl-in calc(var(--step) * 1.5) ease-out both;
+  animation-delay: var(--d);
+}
+
+.tl.play .tl-leg .tl-line {
+  animation: tl-draw var(--step) linear both;
+  animation-delay: var(--d);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl:not(.play) .tl-item {
+    opacity: 1;
+  }
+
+  .tl.play .tl-item,
+  .tl.play .tl-leg .tl-line {
+    animation: none !important;
+  }
+
+  .tl-collapse,
+  .tl-leg .tl-line {
+    transition: none !important;
+  }
+}

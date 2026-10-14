@@ -1,11 +1,19 @@
 {
  "kind": "route",
- "key": "r|37.5569,126.9238|21160530|weekday-18",
- "recordedAt": "2026-10-14T15:26:55.960720+00:00",
+ "key": "r|37.5569,126.9238|21160530|sat-18",
+ "recordedAt": "2026-10-14T16:16:40.387828+00:00",
  "request": {
   "travelMode": "TRANSIT",
   "regionCode": "KR",
-  "departureTime": "2026-10-16T09:00:00Z",
+  "arrivalTime": "2026-10-17T09:00:00Z",
+  "transitPreferences": {
+   "allowedTravelModes": [
+    "BUS",
+    "SUBWAY",
+    "TRAIN",
+    "LIGHT_RAIL"
+   ]
+  },
   "origin": {
    "location": {
     "latLng": {
@@ -31,6 +39,7 @@
      {
       "steps": [
        {
+        "distanceMeters": 30,
         "staticDuration": "31s",
         "polyline": {
          "encodedPolyline": "mifdFsxteWGcA"
@@ -52,6 +61,7 @@
         "travelMode": "WALK"
        },
        {
+        "distanceMeters": 14,
         "staticDuration": "28s",
         "polyline": {
          "encodedPolyline": "uifdFwzteWUR"
@@ -59,6 +69,7 @@
         "travelMode": "WALK"
        },
        {
+        "distanceMeters": 6373,
         "staticDuration": "780s",
         "polyline": {
          "encodedPolyline": "kjfdFczteWoGoJSa@UaAIw@@w@Jy@hSwv@P_AHs@?k@IoAeF{TKq@Eo@sDmyACgBTaQQ{AWwAi@qB]{@oGiN_BuDwGeMg@sAa@qA]}AmAcIcCoQqAcHwCsLa@eAgBuCqAgAe@Yy@}@W_@s@cB[{AIaACaAAuIIoIEeBOg\\MkKGiCA?"
@@ -74,7 +85,7 @@
             }
            }
           },
-          "arrivalTime": "2026-10-16T09:15:00Z",
+          "arrivalTime": "2026-10-17T08:56:00Z",
           "departureStop": {
            "name": "홍대입구",
            "location": {
@@ -84,23 +95,23 @@
             }
            }
           },
-          "departureTime": "2026-10-16T09:02:00Z"
+          "departureTime": "2026-10-17T08:43:00Z"
          },
          "localizedValues": {
           "arrivalTime": {
            "time": {
-            "text": "오후 6:15"
+            "text": "오후 5:56"
            },
            "timeZone": "Asia/Seoul"
           },
           "departureTime": {
            "time": {
-            "text": "오후 6:02"
+            "text": "오후 5:43"
            },
            "timeZone": "Asia/Seoul"
           }
          },
-         "headsign": "내선순환 방면",
+         "headsign": "신도림역 방면",
          "transitLine": {
           "agencies": [
            {

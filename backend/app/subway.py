@@ -8,7 +8,9 @@
 import heapq
 import json
 import math
-from dataclasses import dataclass
+import re
+from collections import deque
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -216,3 +218,49 @@ class TravelEstimator:
         ))
         total = dist[end] + self.params.egress_minutes
         return Route(total_minutes=round(total), transfers=transfers, segments=tuple(segments), source="estimate")
+
+
+def _plain(name: str | None) -> str:
+    """Google 정류장 이름('서울대입구 (관악구청)', '합정역') → 노선도 역명('서울대입구', '합정')."""
+    return re.sub(r"\s*\(.*?\)", "", name or "").strip().removesuffix("역")
+
+
+def _line_hops(network: SubwayNetwork, line: str, start: str, end: str) -> list[str] | None:
+    """같은 노선 안에서 start → end로 가는 최소 환승 없는 역 순서 (이름 목록). 없으면 None."""
+    first, last = f"{line}|{start}", f"{line}|{end}"
+    if first not in network.nodes or last not in network.nodes:
+        return None
+    prev: dict[str, str | None] = {first: None}
+    queue = deque([first])
+    while queue:
+        cur = queue.popleft()
+        if cur == last:
+            break
+        for edge in network.edges[cur]:
+            if edge.transfer or edge.to in prev or not edge.to.startswith(f"{line}|"):
+                continue
+            prev[edge.to] = cur
+            queue.append(edge.to)
+    if last not in prev:
+        return None
+    path, cur = [], last
+    while cur:
+        path.append(network.nodes[cur].name)
+        cur = prev[cur]
+    return path[::-1]
+
+
+def enrich_route_stops(route: Route, network: SubwayNetwork) -> Route:
+    """지하철 구간의 경유 정거장 목록을 우리 노선도 데이터로 채운다.
+
+    Google Routes API는 경유 정거장 이름을 주지 않는다. 노선도(network.json)에서 구한 정거장 수가
+    Google의 stopCount와 같을 때만 채우고, 다르면(급행·지선 등) 틀린 목록을 보여주지 않으려고 비워 둔다.
+    """
+    segments = []
+    for seg in route.segments:
+        if seg.mode == SUBWAY and seg.line_name and seg.stop_count and seg.from_name and seg.to_name:
+            path = _line_hops(network, seg.line_name, _plain(seg.from_name), _plain(seg.to_name))
+            if path and len(path) - 1 == seg.stop_count:
+                seg = replace(seg, intermediate_stops=tuple(path[1:-1]), intermediate_stops_source="subway-map")
+        segments.append(seg)
+    return replace(route, segments=tuple(segments))

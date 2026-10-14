@@ -3,6 +3,7 @@
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Callable, Sequence
 
 from app.geo import Coord
@@ -25,15 +26,15 @@ class MatrixResult:
 
 
 class RouteProvider(ABC):
-    """2단계 구조: matrix()는 상위 후보 확인용(검색당 1회), route()는 참여자 이름을 눌렀을 때만 호출한다."""
+    """2단계 구조: matrix()는 상위 후보 확인용(검색당 1회), route()는 참여자 이름을 눌렀을 때만 호출한다. 둘 다 약속 시간(meeting_time) 도착 기준이다."""
 
     name: str
 
     @abstractmethod
-    def matrix(self, origins: Sequence[Coord], destinations: Sequence[Station]) -> MatrixResult: ...
+    def matrix(self, origins: Sequence[Coord], destinations: Sequence[Station], meeting_time: datetime) -> MatrixResult: ...
 
     @abstractmethod
-    def route(self, origin: Coord, destination: Station) -> Route:
+    def route(self, origin: Coord, destination: Station, meeting_time: datetime) -> Route:
         """실패하면 RouteUnavailable."""
 
 

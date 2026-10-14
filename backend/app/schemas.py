@@ -1,5 +1,6 @@
 """API 요청·응답 스키마."""
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -18,6 +19,8 @@ class ParticipantIn(BaseModel):
 class RegionRecommendRequest(BaseModel):
     participants: list[ParticipantIn] = Field(min_length=2, max_length=5)
     purpose: Purpose
+    # 약속 시간. 없으면 다음 토요일 오후 6시(KST). 이 시각에 도착하는 기준으로 경로를 구한다.
+    meeting_time: datetime | None = None
 
 
 class LatLng(BaseModel):
@@ -111,7 +114,8 @@ class RegionRecommendMeta(BaseModel):
     candidate_count: int
     evaluated_count: int
     weights: WeightsOut
-    travel_source: str       # 상위 3곳 이동시간의 출처: "google" | "odsay" | "estimate"
+    travel_source: str       # 최종 지역 이동시간의 출처: "google" | "odsay" | "estimate"
+    meeting_time: str        # 실제로 쓴 약속 시간 (KST ISO 8601)
     phase2: Phase2Out
     estimate_accuracy: AccuracyOut | None
 
@@ -199,6 +203,15 @@ class RouteSegmentOut(BaseModel):
     to: str | None
     minutes: float
     path: list[list[float]]   # [[lat, lng], ...]
+    # 타임라인용 (없으면 null)
+    distanceMeters: int | None = None
+    departureTime: str | None = None
+    arrivalTime: str | None = None
+    headsign: str | None = None
+    stopCount: int | None = None
+    lineTextColor: str | None = None
+    intermediateStops: list[str] | None = None
+    intermediateStopsSource: str | None = None
 
     model_config = {"populate_by_name": True}
 
@@ -208,12 +221,17 @@ class RouteOut(BaseModel):
     transfers: int
     segments: list[RouteSegmentOut]
     source: Literal["google", "estimate", "odsay"]
+    departureTime: str | None = None   # 집을 나서는 시각
+    arrivalTime: str | None = None     # 도착지 도착 시각
+    walkMinutes: float | None = None
+    walkMeters: int | None = None
 
 
 class RouteRequest(BaseModel):
     lat: float = Field(ge=33.0, le=39.0)
     lng: float = Field(ge=124.0, le=132.0)
     station_id: str
+    meeting_time: datetime | None = None   # 없으면 기본 약속 시간
 
 
 class RouteResponse(BaseModel):

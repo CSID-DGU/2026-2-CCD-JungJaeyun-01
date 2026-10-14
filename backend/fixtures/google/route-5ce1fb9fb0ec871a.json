@@ -1,11 +1,19 @@
 {
  "kind": "route",
- "key": "r|37.5569,126.9238|21160481|weekday-18",
- "recordedAt": "2026-10-14T15:26:53.633022+00:00",
+ "key": "r|37.5569,126.9238|21160617|sat-18",
+ "recordedAt": "2026-10-14T16:16:38.313652+00:00",
  "request": {
   "travelMode": "TRANSIT",
   "regionCode": "KR",
-  "departureTime": "2026-10-16T09:00:00Z",
+  "arrivalTime": "2026-10-17T09:00:00Z",
+  "transitPreferences": {
+   "allowedTravelModes": [
+    "BUS",
+    "SUBWAY",
+    "TRAIN",
+    "LIGHT_RAIL"
+   ]
+  },
   "origin": {
    "location": {
     "latLng": {
@@ -17,8 +25,8 @@
   "destination": {
    "location": {
     "latLng": {
-     "latitude": 37.561268363317176,
-     "longitude": 127.03710337610202
+     "latitude": 37.56566440553802,
+     "longitude": 127.00900417014896
     }
    }
   },
@@ -31,6 +39,7 @@
      {
       "steps": [
        {
+        "distanceMeters": 30,
         "staticDuration": "31s",
         "polyline": {
          "encodedPolyline": "mifdFsxteWGcA"
@@ -52,6 +61,7 @@
         "travelMode": "WALK"
        },
        {
+        "distanceMeters": 14,
         "staticDuration": "28s",
         "polyline": {
          "encodedPolyline": "uifdFwzteWUR"
@@ -59,22 +69,23 @@
         "travelMode": "WALK"
        },
        {
-        "staticDuration": "1320s",
+        "distanceMeters": 7971,
+        "staticDuration": "1020s",
         "polyline": {
-         "encodedPolyline": "kjfdFczteWoGoJSa@UaAIw@@w@Jy@hSwv@P_AHs@?k@IoAeF{TKq@Eo@sDmyACgBTaQQ{AWwAi@qB]{@oGiN_BuDwGeMg@sAa@qA]}AmAcIcCoQqAcHwCsLa@eAgBuCqAgAe@Yy@}@W_@s@cB[{AIaACaAAuIIoIEeBOg\\MkKo@}ZUmNy@k_@DgA|C_\\VgBv@{DrBiJT_BJsA@kB_BiYk@mJMsFAoEBaAHyAjA_KXyDHsDDeGBuAJgA~@aGz@qE`@aB|CgJ|BuGl@oAvDcG`@{@V{@LmA@gBCsD"
+         "encodedPolyline": "kjfdFczteWoGoJSa@UaAIw@@w@Jy@hSwv@P_AHs@?k@IoAeF{TKq@Eo@sDmyACgBTaQQ{AWwAi@qB]{@oGiN_BuDwGeMg@sAa@qA]}AmAcIcCoQqAcHwCsLa@eAgBuCqAgAe@Yy@}@W_@s@cB[{AIaACaAAuIIoIEeBOg\\MkKo@}ZUmNy@k_@DgA|C_\\VgBv@{DCA"
         },
         "transitDetails": {
          "stopDetails": {
           "arrivalStop": {
-           "name": "왕십리",
+           "name": "동대문역사문화공원",
            "location": {
             "latLng": {
-             "latitude": 37.561228,
-             "longitude": 127.03725399999999
+             "latitude": 37.565681999999995,
+             "longitude": 127.00895299999999
             }
            }
           },
-          "arrivalTime": "2026-10-16T09:24:00Z",
+          "arrivalTime": "2026-10-17T09:00:00Z",
           "departureStop": {
            "name": "홍대입구",
            "location": {
@@ -84,23 +95,23 @@
             }
            }
           },
-          "departureTime": "2026-10-16T09:02:00Z"
+          "departureTime": "2026-10-17T08:43:00Z"
          },
          "localizedValues": {
           "arrivalTime": {
            "time": {
-            "text": "오후 6:24"
+            "text": "오후 6:00"
            },
            "timeZone": "Asia/Seoul"
           },
           "departureTime": {
            "time": {
-            "text": "오후 6:02"
+            "text": "오후 5:43"
            },
            "timeZone": "Asia/Seoul"
           }
          },
-         "headsign": "내선순환 방면",
+         "headsign": "신도림역 방면",
          "transitLine": {
           "agencies": [
            {
@@ -120,14 +131,14 @@
            "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
           }
          },
-         "stopCount": 12
+         "stopCount": 9
         },
         "travelMode": "TRANSIT"
        }
       ]
      }
     ],
-    "duration": "1409s"
+    "duration": "1109s"
    }
   ]
  }

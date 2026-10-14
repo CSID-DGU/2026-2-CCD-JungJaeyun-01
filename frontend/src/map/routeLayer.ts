@@ -11,6 +11,8 @@ export interface DrawOptions {
 }
 
 interface RouteState {
+  participant: number
+  weights: number[]
   route: DrawableRoute
   polylines: any[]
   legStart: number[]
@@ -33,6 +35,7 @@ function overlayAt(map: any, point: LatLng, el: HTMLElement, zIndex: number) {
 
 export class RouteLayer {
   private items: any[] = [] // setMap(null)로 지울 수 있는 폴리라인·오버레이
+  private states: RouteState[] = []
   private raf = 0
   private token = 0
   private map: any
@@ -46,6 +49,23 @@ export class RouteLayer {
     cancelAnimationFrame(this.raf)
     this.items.forEach((item) => item.setMap(null))
     this.items = []
+    this.states = []
+  }
+
+  /**
+   * 타임라인에서 고른 구간만 굵고 진하게, 나머지(다른 참여자 포함)는 흐리게 보여준다. 둘 다 null이면 원래대로.
+   */
+  highlight(participant: number | null, legIndex: number | null) {
+    const on = participant !== null && legIndex !== null
+    for (const st of this.states) {
+      st.polylines.forEach((polyline, i) => {
+        const focused = on && st.participant === participant && i === legIndex
+        polyline.setOptions({
+          strokeOpacity: !on ? 0.92 : focused ? 1 : 0.2,
+          strokeWeight: focused ? st.weights[i] + 3 : st.weights[i],
+        })
+      })
+    }
   }
 
   /** 모두 그려지면(또는 취소되면) resolve. */
@@ -53,6 +73,7 @@ export class RouteLayer {
     this.clear()
     const my = this.token
     const states: RouteState[] = routes.map((route) => this.build(route, opts.animate))
+    this.states = states
     if (!opts.animate) return Promise.resolve()
 
     return new Promise((resolve) => {
@@ -134,7 +155,10 @@ export class RouteLayer {
       follower = overlayAt(this.map, route.legs[0].path[0], el, 6)
       this.items.push(follower)
     }
-    return { route, polylines, legStart, legLen, total, dots, follower, finished: false }
+    return {
+      participant: route.participant, weights: route.legs.map((leg) => leg.weight),
+      route, polylines, legStart, legLen, total, dots, follower, finished: false,
+    }
   }
 
   private update(st: RouteState, d: number, t: number) {

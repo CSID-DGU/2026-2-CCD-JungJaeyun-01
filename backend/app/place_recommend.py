@@ -2,6 +2,7 @@
 
 import logging
 from collections import Counter
+from datetime import datetime
 from typing import Sequence
 
 from app.config import PlaceConfig, RegionConfig
@@ -110,8 +111,9 @@ def recommend_with_places(
     stations: Sequence[Station],
     region_config: RegionConfig,
     place_config: PlaceConfig,
+    meeting_time: datetime,
 ) -> RecommendResponse:
-    base = recommend_regions(request, estimator, provider, stations, region_config)
+    base = recommend_regions(request, estimator, provider, stations, region_config, meeting_time)
     by_id = {s.id: s for s in stations}
     rule = place_config.purposes[request.purpose]
 

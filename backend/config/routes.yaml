@@ -1,6 +1,8 @@
 # 경로 API(Google Routes) 호출 설정
-departure:
-  hour: 18            # 출발 시각: 다음 평일 오후 6시 (KST). 캐시 키의 요일·시간대도 여기서 정해진다.
+# 약속 시간 기본값: 다음 토요일 오후 6시 (KST). 경로는 이 시각에 '도착'하는 기준(arrivalTime)으로 구한다.
+meeting:
+  default_weekday: 5     # 0=월 ... 5=토
+  default_hour: 18
   utc_offset_hours: 9
 # TRANSIT 요청에서 허용할 대중교통 수단 (버스 포함)
 transit_modes: [BUS, SUBWAY, TRAIN, LIGHT_RAIL]

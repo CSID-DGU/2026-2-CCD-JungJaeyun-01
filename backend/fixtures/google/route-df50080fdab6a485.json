@@ -1,11 +1,19 @@
 {
  "kind": "route",
- "key": "r|37.5133,127.1002|21160617|weekday-18",
- "recordedAt": "2026-10-14T15:26:55.460291+00:00",
+ "key": "r|37.5133,127.1002|21160530|sat-18",
+ "recordedAt": "2026-10-14T16:16:40.908907+00:00",
  "request": {
   "travelMode": "TRANSIT",
   "regionCode": "KR",
-  "departureTime": "2026-10-16T09:00:00Z",
+  "arrivalTime": "2026-10-17T09:00:00Z",
+  "transitPreferences": {
+   "allowedTravelModes": [
+    "BUS",
+    "SUBWAY",
+    "TRAIN",
+    "LIGHT_RAIL"
+   ]
+  },
   "origin": {
    "location": {
     "latLng": {
@@ -17,8 +25,8 @@
   "destination": {
    "location": {
     "latLng": {
-     "latitude": 37.56566440553802,
-     "longitude": 127.00900417014896
+     "latitude": 37.56629149790628,
+     "longitude": 126.99098443539428
     }
    }
   },
@@ -31,22 +39,23 @@
      {
       "steps": [
        {
-        "staticDuration": "1320s",
+        "distanceMeters": 13767,
+        "staticDuration": "1500s",
         "polyline": {
-         "encodedPolyline": "my}cFagwfWk@mDyAsG_A}B[k@}@mA}@aAiBsAiB{@qA]qAWsAMiBDeBTwBj@w@XkGtCgM`GcEbCm|@jf@yDxBsAp@kDrB_Bv@eAv@_A`Au@nAo@vAe@|AWzAKx@IdBCx@DhBPfBxEvYf@xDF|@@hAC`AKv@s@hEgGf`@{BpNeGfYu@`Dy@nDeGjW}CtNqGl[wDjRyBxKwBvJeBnIgBvH_@fBo@xBy@|Aa@h@g@b@sAx@o@Ro@L{Eb@wCJ_EBu@ByMlAeDVmE`@}Jp@wCVm@JsAf@s@`@gAjAm@hASb@a@vAO~@KhAAl@?dIFhOExAObAQh@a@z@wDbGm@nAcG`QWz@a@`B{@pE_A`GKfACtAEdGO`FSjCkA~JIxAC`AB`GJ`EzB``@NtCAjBKrAU~AsBhJCA"
+         "encodedPolyline": "my}cFagwfWk@mDyAsG_A}B[k@}@mA}@aAiBsAiB{@qA]qAWsAMiBDeBTwBj@w@XkGtCgM`GcEbCm|@jf@yDxBsAp@kDrB_Bv@eAv@_A`Au@nAo@vAe@|AWzAKx@IdBCx@DhBPfBxEvYf@xDF|@@hAC`AKv@s@hEgGf`@{BpNeGfYu@`Dy@nDeGjW}CtNqGl[wDjRyBxKwBvJeBnIgBvH_@fBo@xBy@|Aa@h@g@b@sAx@o@Ro@L{Eb@wCJ_EBu@ByMlAeDVmE`@}Jp@wCVm@JsAf@s@`@gAjAm@hASb@a@vAO~@KhAAl@?dIFhOExAObAQh@a@z@wDbGm@nAcG`QWz@a@`B{@pE_A`GKfACtAEdGO`FSjCkA~JIxAC`AB`GJ`EzB``@NtCAjBKrAU~A}CpN]tBuBbTo@`HEfAbApf@p@z^"
         },
         "transitDetails": {
          "stopDetails": {
           "arrivalStop": {
-           "name": "동대문역사문화공원",
+           "name": "을지로3가",
            "location": {
             "latLng": {
-             "latitude": 37.565681999999995,
-             "longitude": 127.00895299999999
+             "latitude": 37.566288,
+             "longitude": 126.991051
             }
            }
           },
-          "arrivalTime": "2026-10-16T09:23:00Z",
+          "arrivalTime": "2026-10-17T08:54:00Z",
           "departureStop": {
            "name": "잠실",
            "location": {
@@ -56,23 +65,23 @@
             }
            }
           },
-          "departureTime": "2026-10-16T09:01:00Z"
+          "departureTime": "2026-10-17T08:29:00Z"
          },
          "localizedValues": {
           "arrivalTime": {
            "time": {
-            "text": "오후 6:23"
+            "text": "오후 5:54"
            },
            "timeZone": "Asia/Seoul"
           },
           "departureTime": {
            "time": {
-            "text": "오후 6:01"
+            "text": "오후 5:29"
            },
            "timeZone": "Asia/Seoul"
           }
          },
-         "headsign": "외선순환 방면",
+         "headsign": "신도림역 방면",
          "transitLine": {
           "agencies": [
            {
@@ -92,14 +101,14 @@
            "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
           }
          },
-         "stopCount": 11
+         "stopCount": 13
         },
         "travelMode": "TRANSIT"
        }
       ]
      }
     ],
-    "duration": "1320s"
+    "duration": "1500s"
    }
   ]
  }

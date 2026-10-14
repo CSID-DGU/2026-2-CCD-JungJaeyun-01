@@ -5,6 +5,7 @@ import {
   PARTICIPANT_COLORS,
   PURPOSE_OPTIONS,
 } from '../constants'
+import { seoulNowInput } from '../meeting'
 import type { AgeGroup, Purpose } from '../types'
 import type { FieldErrors, FormParticipant } from '../validate'
 import PlaceAutocomplete from './PlaceAutocomplete'
@@ -12,6 +13,9 @@ import PlaceAutocomplete from './PlaceAutocomplete'
 interface Props {
   participants: FormParticipant[]
   purpose: Purpose
+  /** 약속 시간 (서울 시각, 'YYYY-MM-DDTHH:mm') */
+  meetingTime: string
+  meetingError: string | null
   errors: FieldErrors
   loading: boolean
   submitError: string | null
@@ -19,11 +23,12 @@ interface Props {
   onAdd: () => void
   onRemove: (key: number) => void
   onPurpose: (purpose: Purpose) => void
+  onMeetingTime: (value: string) => void
   onSubmit: () => void
 }
 
 export default function InputForm(props: Props) {
-  const { participants, purpose, errors, loading, submitError } = props
+  const { participants, purpose, meetingTime, meetingError, errors, loading, submitError } = props
   const count = participants.length
 
   return (
@@ -135,6 +140,20 @@ export default function InputForm(props: Props) {
           이동수단 <span className="chip">대중교통</span>
           <small>현재 대중교통만 지원해요</small>
         </p>
+
+        <div className="field meeting">
+          <label htmlFor="meeting-time">약속 시간</label>
+          <input
+            id="meeting-time"
+            type="datetime-local"
+            value={meetingTime}
+            min={seoulNowInput()}
+            className={meetingError ? 'invalid' : ''}
+            onChange={(e) => props.onMeetingTime(e.target.value)}
+          />
+          <small className="hint">이 시각에 도착하는 기준으로 이동시간과 출발 시각을 계산해요. (기본: 다음 토요일 오후 6시)</small>
+          {meetingError && <p className="field-error">{meetingError}</p>}
+        </div>
       </section>
 
       {submitError && (

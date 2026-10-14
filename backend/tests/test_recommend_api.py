@@ -32,15 +32,18 @@ class FakeProvider(RouteProvider):
         self.minutes, self.error, self.route_value, self.route_error = minutes, error, route, route_error
         self.matrix_calls: list[tuple] = []
         self.route_calls: list[tuple] = []
+        self.meeting_times: list = []   # 받은 약속 시간
 
-    def matrix(self, origins, destinations):
+    def matrix(self, origins, destinations, meeting_time):
+        self.meeting_times.append(meeting_time)
         self.matrix_calls.append((list(origins), [d.name for d in destinations]))
         if self.error:
             return MatrixResult(minutes=[[None] * len(destinations) for _ in origins], error=self.error)
         grid = [[self.minutes(i, j) for j in range(len(destinations))] for i in range(len(origins))]
         return MatrixResult(minutes=grid, api_calls=1)
 
-    def route(self, origin, destination):
+    def route(self, origin, destination, meeting_time):
+        self.meeting_times.append(meeting_time)
         self.route_calls.append((origin, destination.name))
         if self.route_error:
             raise RouteUnavailable(self.route_error)
@@ -169,7 +172,7 @@ def test_missing_matrix_cells_fall_back_to_estimates_only_for_those(client):
 
 
 # --------------------------------------------------------------------------- 실제 Google 프로바이더 + 가짜 HTTP: 호출 횟수
-SETTINGS = GoogleSettings(departure_hour=18, utc_offset_hours=9, cache_ttl_days=7, max_retries=1,
+SETTINGS = GoogleSettings(utc_offset_hours=9, cache_ttl_days=7, max_retries=1,
                           backoff_seconds=0, timeout_seconds=5, cooldown_seconds=120)
 
 
@@ -234,9 +237,9 @@ def test_route_detail_is_requested_only_when_asked_and_then_cached(google):
     r = c.post("/api/route", json=body).json()
     assert http.count(ROUTES_URL) == 1 and r["note"] is None
     route = r["route"]
-    assert set(route) == {"totalMinutes", "transfers", "segments", "source"} and route["source"] == "google"
+    assert {"totalMinutes", "transfers", "segments", "source"} <= set(route) and route["source"] == "google"
     seg = route["segments"][0]
-    assert set(seg) == {"mode", "lineName", "lineColor", "from", "to", "minutes", "path"}
+    assert {"mode", "lineName", "lineColor", "from", "to", "minutes", "path"} <= set(seg)  # 공통 스키마의 기본 필드
     assert (seg["mode"], seg["lineName"], seg["lineColor"]) == ("SUBWAY", "2호선", "#35b12b")
     assert seg["path"][0][0] == pytest.approx(37.5499, abs=0.01)  # [lat, lng] 순서
     c.post("/api/route", json=body)
@@ -244,7 +247,7 @@ def test_route_detail_is_requested_only_when_asked_and_then_cached(google):
 
 
 def test_route_response_contains_bus_segments_like_subway_ones(tmp_path):
-    http = FakeHttp("google_route_bus_naegok_gangnam.json")
+    http = FakeHttp("google_route_arrive_bus_naegok_gangnam.json")
     store = RoutesStore(tmp_path / "bus.sqlite3")
     provider = GoogleRouteProvider(GoogleClient("test-key", "live", store, SETTINGS, http=http), SETTINGS)
     app.dependency_overrides[get_route_provider] = lambda: provider
@@ -256,7 +259,7 @@ def test_route_response_contains_bus_segments_like_subway_ones(tmp_path):
         app.dependency_overrides.clear()
     bus = next(s for s in r["route"]["segments"] if s["mode"] == "BUS")
     assert (bus["lineName"], bus["lineColor"]) == ("741", "#374ff2")  # 버스도 노선명·노선 색을 가진다
-    assert set(bus) == {"mode", "lineName", "lineColor", "from", "to", "minutes", "path"} and len(bus["path"]) > 20
+    assert {"mode", "lineName", "lineColor", "from", "to", "minutes", "path"} <= set(bus) and len(bus["path"]) > 20
 
 
 def test_route_failure_falls_back_to_a_labelled_estimate_route(client):

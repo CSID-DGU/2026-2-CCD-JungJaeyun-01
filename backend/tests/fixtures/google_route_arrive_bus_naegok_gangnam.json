@@ -11,6 +11,7 @@
  ],
  "request_body": {
   "travelMode": "TRANSIT",
+  "arrivalTime": "2026-10-17T09:00:00Z",
   "transitPreferences": {
    "allowedTravelModes": [
     "BUS",
@@ -18,7 +19,8 @@
     "TRAIN",
     "LIGHT_RAIL"
    ]
-  }
+  },
+  "languageCode": "ko"
  },
  "response": {
   "routes": [
@@ -27,6 +29,7 @@
      {
       "steps": [
        {
+        "distanceMeters": 199,
         "staticDuration": "200s",
         "polyline": {
          "encodedPolyline": "_srcFgdqfWcF}I"
@@ -34,6 +37,7 @@
         "travelMode": "WALK"
        },
        {
+        "distanceMeters": 6421,
         "staticDuration": "940s",
         "polyline": {
          "encodedPolyline": "czrcFeoqfWtEbSzAtF\\hBLhCEfCQhByAhFyTxq@yDjLyDzL{@fCaCzHuDzJwCfE}OhQmCvCcBbB_InHQJqCx@{Bb@yARgBDoACq@@yBGeDTmKQ}FBmEC_D^_D|@mAb@_Af@wEzCaH`HcGtGm@b@_HnCeQxG}IzCuYxKHb@"
@@ -49,7 +53,7 @@
             }
            }
           },
-          "arrivalTime": "2026-10-16T09:29:00Z",
+          "arrivalTime": "2026-10-17T08:53:59Z",
           "departureStop": {
            "name": "샘마을.서울특별시어린이병원",
            "location": {
@@ -59,18 +63,18 @@
             }
            }
           },
-          "departureTime": "2026-10-16T09:13:20Z"
+          "departureTime": "2026-10-17T08:38:19Z"
          },
          "localizedValues": {
           "arrivalTime": {
            "time": {
-            "text": "오후 6:29"
+            "text": "오후 5:53"
            },
            "timeZone": "Asia/Seoul"
           },
           "departureTime": {
            "time": {
-            "text": "오후 6:13"
+            "text": "오후 5:38"
            },
            "timeZone": "Asia/Seoul"
           }
@@ -101,6 +105,7 @@
         "travelMode": "TRANSIT"
        },
        {
+        "distanceMeters": 360,
         "staticDuration": "361s",
         "polyline": {
          "encodedPolyline": "ifzcFwiifWwRvD"

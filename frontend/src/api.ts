@@ -49,11 +49,11 @@ export function recommend(body: RecommendRequest): Promise<RecommendResponse> {
 }
 
 /** 참여자 한 명의 상세 경로. 사용자가 이름을 눌렀을 때만 호출한다 (백엔드가 캐시). */
-export function fetchRoute(lat: number, lng: number, stationId: string): Promise<RouteResponse> {
+export function fetchRoute(lat: number, lng: number, stationId: string, meetingTime?: string): Promise<RouteResponse> {
   return request('/api/route', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lat, lng, station_id: stationId }),
+    body: JSON.stringify({ lat, lng, station_id: stationId, meeting_time: meetingTime }),
   })
 }
 

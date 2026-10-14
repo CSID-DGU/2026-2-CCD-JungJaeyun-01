@@ -14,6 +14,8 @@ export interface PlaceHit {
 export interface RecommendRequest {
   participants: { name: string; lat: number; lng: number; age_group: AgeGroup }[]
   purpose: Purpose
+  /** 약속 시간 (KST ISO 8601). 이 시각에 도착하는 기준으로 경로를 구한다. */
+  meeting_time?: string
 }
 
 export interface LatLng {
@@ -33,6 +35,19 @@ export interface RouteSegment {
   minutes: number
   /** [[lat, lng], ...] 출발 → 도착 */
   path: [number, number][]
+  // --- 타임라인용 (모르면 null) ---
+  distanceMeters: number | null
+  /** KST ISO 8601 */
+  departureTime: string | null
+  arrivalTime: string | null
+  /** "신도림역 방면" */
+  headsign: string | null
+  stopCount: number | null
+  /** 노선 배지 글자색 */
+  lineTextColor: string | null
+  /** 경유 정거장 이름 (출발·도착 제외). Google은 주지 않아서 지하철만 노선도 데이터로 채운다. */
+  intermediateStops: string[] | null
+  intermediateStopsSource: 'subway-map' | null
 }
 
 export interface Route {
@@ -41,6 +56,11 @@ export interface Route {
   segments: RouteSegment[]
   /** google: 실제 경로 / estimate: 지하철 그래프 추정 경로 */
   source: 'google' | 'estimate' | 'odsay'
+  /** 집을 나서는 시각 / 도착지 도착 시각 (KST ISO 8601, 추정 경로는 null) */
+  departureTime: string | null
+  arrivalTime: string | null
+  walkMinutes: number | null
+  walkMeters: number | null
 }
 
 export interface RouteResponse {
@@ -108,6 +128,8 @@ export interface RecommendResponse {
   meta: {
     purpose: Purpose
     candidate_count: number
+    /** 실제로 쓴 약속 시간 (KST ISO 8601) */
+    meeting_time: string
     travel_source: string
     phase2: Phase2
     estimate_accuracy: EstimateAccuracy | null

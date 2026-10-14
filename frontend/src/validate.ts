@@ -21,9 +21,10 @@ export function validateParticipants(participants: FormParticipant[]): FieldErro
 }
 
 /** 검증을 통과한 폼 값을 API 요청으로 바꾼다. */
-export function toRequest(participants: FormParticipant[], purpose: Purpose): RecommendRequest {
+export function toRequest(participants: FormParticipant[], purpose: Purpose, meetingTimeIso?: string): RecommendRequest {
   return {
     purpose,
+    meeting_time: meetingTimeIso,
     participants: participants.map((p) => ({
       name: p.name.trim(),
       lat: p.origin!.lat,

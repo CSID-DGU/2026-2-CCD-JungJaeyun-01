@@ -183,8 +183,7 @@ def load_google_settings():
 
     raw = _read_yaml("routes.yaml")
     return GoogleSettings(
-        departure_hour=int(raw["departure"]["hour"]),
-        utc_offset_hours=int(raw["departure"]["utc_offset_hours"]),
+        utc_offset_hours=int(raw["meeting"]["utc_offset_hours"]),
         cache_ttl_days=int(raw["cache_ttl_days"]),
         max_retries=int(raw["retry"]["max_retries"]),
         backoff_seconds=float(raw["retry"]["backoff_seconds"]),
@@ -192,3 +191,10 @@ def load_google_settings():
         cooldown_seconds=float(raw["cooldown_seconds"]),
         transit_modes=tuple(raw["transit_modes"]),
     )
+
+
+@lru_cache
+def load_meeting_defaults() -> tuple[int, int]:
+    """약속 시간 기본값 (요일, 시)."""
+    raw = _read_yaml("routes.yaml")["meeting"]
+    return int(raw["default_weekday"]), int(raw["default_hour"])

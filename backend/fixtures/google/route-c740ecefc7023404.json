@@ -1,11 +1,19 @@
 {
  "kind": "route",
- "key": "r|37.5133,127.1002|21160481|weekday-18",
- "recordedAt": "2026-10-14T15:26:54.220380+00:00",
+ "key": "r|37.5133,127.1002|21160481|sat-18",
+ "recordedAt": "2026-10-14T16:16:39.889410+00:00",
  "request": {
   "travelMode": "TRANSIT",
   "regionCode": "KR",
-  "departureTime": "2026-10-16T09:00:00Z",
+  "arrivalTime": "2026-10-17T09:00:00Z",
+  "transitPreferences": {
+   "allowedTravelModes": [
+    "BUS",
+    "SUBWAY",
+    "TRAIN",
+    "LIGHT_RAIL"
+   ]
+  },
   "origin": {
    "location": {
     "latLng": {
@@ -31,7 +39,8 @@
      {
       "steps": [
        {
-        "staticDuration": "960s",
+        "distanceMeters": 9533,
+        "staticDuration": "1020s",
         "polyline": {
          "encodedPolyline": "my}cFagwfWk@mDyAsG_A}B[k@}@mA}@aAiBsAiB{@qA]qAWsAMiBDeBTwBj@w@XkGtCgM`GcEbCm|@jf@yDxBsAp@kDrB_Bv@eAv@_A`Au@nAo@vAe@|AWzAKx@IdBCx@DhBPfBxEvYf@xDF|@@hAC`AKv@s@hEgGf`@{BpNeGfYu@`Dy@nDeGjW}CtNqGl[wDjRyBxKwBvJeBnIgBvH_@fBo@xBy@|Aa@h@g@b@sAx@o@Ro@L{Eb@wCJ_EBu@ByMlAeDVmE`@}Jp@wCVm@JsAf@s@`@gAjAm@hASb@a@vAO~@KhAAl@?dIBjH"
         },
@@ -46,7 +55,7 @@
             }
            }
           },
-          "arrivalTime": "2026-10-16T09:17:00Z",
+          "arrivalTime": "2026-10-17T08:56:00Z",
           "departureStop": {
            "name": "잠실",
            "location": {
@@ -56,18 +65,18 @@
             }
            }
           },
-          "departureTime": "2026-10-16T09:01:00Z"
+          "departureTime": "2026-10-17T08:39:00Z"
          },
          "localizedValues": {
           "arrivalTime": {
            "time": {
-            "text": "오후 6:17"
+            "text": "오후 5:56"
            },
            "timeZone": "Asia/Seoul"
           },
           "departureTime": {
            "time": {
-            "text": "오후 6:01"
+            "text": "오후 5:39"
            },
            "timeZone": "Asia/Seoul"
           }
@@ -99,7 +108,7 @@
       ]
      }
     ],
-    "duration": "960s"
+    "duration": "1020s"
    }
   ]
  }

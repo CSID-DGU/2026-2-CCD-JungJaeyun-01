@@ -1,16 +1,24 @@
 {
  "kind": "route",
- "key": "r|37.5569,126.9238|21160617|weekday-18",
- "recordedAt": "2026-10-14T15:26:54.842912+00:00",
+ "key": "r|37.5133,127.1002|21160617|sat-18",
+ "recordedAt": "2026-10-14T16:16:38.889225+00:00",
  "request": {
   "travelMode": "TRANSIT",
   "regionCode": "KR",
-  "departureTime": "2026-10-16T09:00:00Z",
+  "arrivalTime": "2026-10-17T09:00:00Z",
+  "transitPreferences": {
+   "allowedTravelModes": [
+    "BUS",
+    "SUBWAY",
+    "TRAIN",
+    "LIGHT_RAIL"
+   ]
+  },
   "origin": {
    "location": {
     "latLng": {
-     "latitude": 37.556871,
-     "longitude": 126.923779
+     "latitude": 37.513311,
+     "longitude": 127.100231
     }
    }
   },
@@ -31,37 +39,10 @@
      {
       "steps": [
        {
-        "staticDuration": "31s",
+        "distanceMeters": 12173,
+        "staticDuration": "1320s",
         "polyline": {
-         "encodedPolyline": "mifdFsxteWGcA"
-        },
-        "travelMode": "WALK"
-       },
-       {
-        "staticDuration": "30s",
-        "polyline": {
-         "encodedPolyline": "uifdFwzteW"
-        },
-        "travelMode": "WALK"
-       },
-       {
-        "staticDuration": "0s",
-        "polyline": {
-         "encodedPolyline": "uifdFwzteW"
-        },
-        "travelMode": "WALK"
-       },
-       {
-        "staticDuration": "28s",
-        "polyline": {
-         "encodedPolyline": "uifdFwzteWUR"
-        },
-        "travelMode": "WALK"
-       },
-       {
-        "staticDuration": "1020s",
-        "polyline": {
-         "encodedPolyline": "kjfdFczteWoGoJSa@UaAIw@@w@Jy@hSwv@P_AHs@?k@IoAeF{TKq@Eo@sDmyACgBTaQQ{AWwAi@qB]{@oGiN_BuDwGeMg@sAa@qA]}AmAcIcCoQqAcHwCsLa@eAgBuCqAgAe@Yy@}@W_@s@cB[{AIaACaAAuIIoIEeBOg\\MkKo@}ZUmNy@k_@DgA|C_\\VgBv@{DCA"
+         "encodedPolyline": "my}cFagwfWk@mDyAsG_A}B[k@}@mA}@aAiBsAiB{@qA]qAWsAMiBDeBTwBj@w@XkGtCgM`GcEbCm|@jf@yDxBsAp@kDrB_Bv@eAv@_A`Au@nAo@vAe@|AWzAKx@IdBCx@DhBPfBxEvYf@xDF|@@hAC`AKv@s@hEgGf`@{BpNeGfYu@`Dy@nDeGjW}CtNqGl[wDjRyBxKwBvJeBnIgBvH_@fBo@xBy@|Aa@h@g@b@sAx@o@Ro@L{Eb@wCJ_EBu@ByMlAeDVmE`@}Jp@wCVm@JsAf@s@`@gAjAm@hASb@a@vAO~@KhAAl@?dIFhOExAObAQh@a@z@wDbGm@nAcG`QWz@a@`B{@pE_A`GKfACtAEdGO`FSjCkA~JIxAC`AB`GJ`EzB``@NtCAjBKrAU~AsBhJCA"
         },
         "transitDetails": {
          "stopDetails": {
@@ -74,33 +55,33 @@
             }
            }
           },
-          "arrivalTime": "2026-10-16T09:19:00Z",
+          "arrivalTime": "2026-10-17T08:51:00Z",
           "departureStop": {
-           "name": "홍대입구",
+           "name": "잠실",
            "location": {
             "latLng": {
-             "latitude": 37.557016,
-             "longitude": 126.924019
+             "latitude": 37.513349999999996,
+             "longitude": 127.100171
             }
            }
           },
-          "departureTime": "2026-10-16T09:02:00Z"
+          "departureTime": "2026-10-17T08:29:00Z"
          },
          "localizedValues": {
           "arrivalTime": {
            "time": {
-            "text": "오후 6:19"
+            "text": "오후 5:51"
            },
            "timeZone": "Asia/Seoul"
           },
           "departureTime": {
            "time": {
-            "text": "오후 6:02"
+            "text": "오후 5:29"
            },
            "timeZone": "Asia/Seoul"
           }
          },
-         "headsign": "내선순환 방면",
+         "headsign": "신도림역 방면",
          "transitLine": {
           "agencies": [
            {
@@ -120,14 +101,14 @@
            "iconUri": "//maps.gstatic.com/mapfiles/transit/iw2/6/subway2.png"
           }
          },
-         "stopCount": 9
+         "stopCount": 11
         },
         "travelMode": "TRANSIT"
        }
       ]
      }
     ],
-    "duration": "1109s"
+    "duration": "1320s"
    }
   ]
  }

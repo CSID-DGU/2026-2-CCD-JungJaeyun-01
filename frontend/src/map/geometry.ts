@@ -1,5 +1,5 @@
 // 지도에 그릴 경로 도형을 만드는 순수 함수들 (카카오 SDK에 의존하지 않는다).
-import type { LatLng, Route, RouteMode } from '../types'
+import type { LatLng, Route, RouteMode, RouteSegment } from '../types'
 
 export interface DrawLeg {
   mode: RouteMode
@@ -10,6 +10,8 @@ export interface DrawLeg {
 }
 
 export interface DrawableRoute {
+  /** 참여자 순번 (구간 강조에 쓴다) */
+  participant: number
   color: string
   legs: DrawLeg[]
   /** 환승 지점 (두 번째 이후 대중교통 구간이 시작되는 곳) */
@@ -56,16 +58,24 @@ export function partialPath(path: LatLng[], d: number): LatLng[] {
 }
 
 /**
+ * 구간의 선 색. 지도 위 경로 선과 타임라인 선이 같은 함수를 써서 항상 같은 색이 된다.
+ * 도보는 참여자 색, 지하철·버스는 노선 색(없으면 참여자 색).
+ */
+export function legColor(seg: Pick<RouteSegment, 'mode' | 'lineColor'>, participantColor: string): string {
+  return seg.mode === 'WALK' ? participantColor : (seg.lineColor ?? participantColor)
+}
+
+/**
  * 공통 경로 스키마(route)를 지도용 도형으로 바꾼다.
  * 지하철·버스는 노선 색 실선(색이 없으면 참여자 색), 도보는 점선.
  * 추정 경로(source='estimate')는 모든 구간을 점선으로 그리고 "추정 경로"라고 표시한다.
  */
-export function buildDrawable(route: Route, color: string): DrawableRoute {
+export function buildDrawable(route: Route, color: string, participant = 0): DrawableRoute {
   const estimated = route.source === 'estimate'
   const legs: DrawLeg[] = route.segments.map((seg) => ({
     mode: seg.mode,
     dashed: seg.mode === 'WALK' || estimated,
-    color: seg.mode === 'WALK' ? color : (seg.lineColor ?? color),
+    color: legColor(seg, color),
     weight: seg.mode === 'WALK' ? 4 : 6,
     path: seg.path.map(([lat, lng]) => ({ lat, lng })),
   }))
@@ -79,7 +89,7 @@ export function buildDrawable(route: Route, color: string): DrawableRoute {
   const busBoardings = legs.flatMap((leg, legIndex) =>
     leg.mode === 'BUS' ? [{ legIndex, point: leg.path[0], color: leg.color }] : [],
   )
-  return { color, legs, transfers, busBoardings, estimatedLabel: estimated ? '추정 경로' : null }
+  return { participant, color, legs, transfers, busBoardings, estimatedLabel: estimated ? '추정 경로' : null }
 }
 
 /** 지도 범위를 맞출 때 쓰는, 경로가 지나는 모든 좌표 */

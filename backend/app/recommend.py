@@ -10,6 +10,7 @@
 """
 
 import logging
+from datetime import datetime
 from typing import Sequence
 
 from app.config import RegionConfig
@@ -95,6 +96,7 @@ def recommend_regions(
     provider: RouteProvider | None,
     stations: Sequence[Station],
     config: RegionConfig,
+    meeting_time: datetime,
 ) -> RegionRecommendResponse:
     participants = request.participants
     origins = [Coord(p.lat, p.lng) for p in participants]
@@ -112,7 +114,7 @@ def recommend_regions(
     # --- 2단계: 후보 전체의 실제 소요시간 (검색당 최대 1회 호출) ---------------------------
     matrix = MatrixResult(minutes=[[None] * len(top) for _ in origins])
     if provider is not None:
-        matrix = provider.matrix(origins, top)
+        matrix = provider.matrix(origins, top, meeting_time)
     final: dict[str, list[float]] = {}
     estimated_flags: dict[str, list[bool]] = {}
     pairs: list[AccuracyPairOut] = []
@@ -185,6 +187,7 @@ def recommend_regions(
             candidate_count=len(candidates),
             evaluated_count=len(candidates),
             weights=WeightsOut(avg=w.avg, max=w.max, std=w.std),
+            meeting_time=meeting_time.isoformat(timespec="minutes"),
             travel_source=(provider.name if provider is not None and used_actual else "estimate"),
             phase2=Phase2Out(status=status, reason=reason, provider=provider.name if provider else None,
                              api_calls=matrix.api_calls, cache_hits=matrix.cache_hits,

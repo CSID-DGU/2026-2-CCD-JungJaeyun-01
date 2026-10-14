@@ -1,11 +1,11 @@
 {
  "kind": "matrix",
- "key": "matrix|37.5569,126.9238;37.5133,127.1002|21160617,21160481,21160530,21160622,21160626,21160570,21160625,21160633|weekday-18",
- "recordedAt": "2026-10-14T16:01:47.469924+00:00",
+ "key": "matrix|37.5569,126.9238;37.5133,127.1002|21160617,21160481,21160530,21160622,21160626,21160570,21160625,21160633|sat-18",
+ "recordedAt": "2026-10-14T16:16:23.738520+00:00",
  "request": {
   "travelMode": "TRANSIT",
   "regionCode": "KR",
-  "departureTime": "2026-10-16T09:00:00Z",
+  "arrivalTime": "2026-10-17T09:00:00Z",
   "transitPreferences": {
    "allowedTravelModes": [
     "BUS",
@@ -122,55 +122,6 @@
  "response": [
   {
    "originIndex": 0,
-   "destinationIndex": 6,
-   "status": {},
-   "duration": "1889s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 0,
-   "destinationIndex": 3,
-   "status": {},
-   "duration": "749s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 1,
-   "destinationIndex": 4,
-   "status": {},
-   "duration": "660s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 0,
-   "destinationIndex": 5,
-   "status": {},
-   "duration": "894s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 0,
-   "destinationIndex": 1,
-   "status": {},
-   "duration": "1409s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 1,
-   "destinationIndex": 7,
-   "status": {},
-   "duration": "1560s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 0,
-   "destinationIndex": 0,
-   "status": {},
-   "duration": "1109s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 0,
    "destinationIndex": 2,
    "status": {},
    "duration": "869s",
@@ -178,23 +129,51 @@
   },
   {
    "originIndex": 1,
+   "destinationIndex": 1,
+   "status": {},
+   "duration": "1020s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
+   "destinationIndex": 3,
+   "status": {},
+   "duration": "809s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
+   "destinationIndex": 1,
+   "status": {},
+   "duration": "1349s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
    "destinationIndex": 6,
    "status": {},
-   "duration": "480s",
+   "duration": "1889s",
    "condition": "ROUTE_EXISTS"
   },
   {
-   "originIndex": 1,
-   "destinationIndex": 2,
-   "status": {},
-   "duration": "1500s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 1,
+   "originIndex": 0,
    "destinationIndex": 5,
    "status": {},
-   "duration": "2005s",
+   "duration": "954s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
+   "destinationIndex": 4,
+   "status": {},
+   "duration": "1829s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
+   "destinationIndex": 7,
+   "status": {},
+   "duration": "1889s",
    "condition": "ROUTE_EXISTS"
   },
   {
@@ -206,30 +185,51 @@
   },
   {
    "originIndex": 1,
-   "destinationIndex": 1,
+   "destinationIndex": 0,
    "status": {},
-   "duration": "960s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 0,
-   "destinationIndex": 4,
-   "status": {},
-   "duration": "1769s",
-   "condition": "ROUTE_EXISTS"
-  },
-  {
-   "originIndex": 0,
-   "destinationIndex": 7,
-   "status": {},
-   "duration": "1829s",
+   "duration": "1320s",
    "condition": "ROUTE_EXISTS"
   },
   {
    "originIndex": 1,
+   "destinationIndex": 4,
+   "status": {},
+   "duration": "660s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 1,
+   "destinationIndex": 5,
+   "status": {},
+   "duration": "2005s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 1,
+   "destinationIndex": 6,
+   "status": {},
+   "duration": "480s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 0,
    "destinationIndex": 0,
    "status": {},
-   "duration": "1320s",
+   "duration": "1109s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 1,
+   "destinationIndex": 2,
+   "status": {},
+   "duration": "1500s",
+   "condition": "ROUTE_EXISTS"
+  },
+  {
+   "originIndex": 1,
+   "destinationIndex": 7,
+   "status": {},
+   "duration": "1500s",
    "condition": "ROUTE_EXISTS"
   }
  ]

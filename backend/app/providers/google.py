@@ -40,6 +40,7 @@ ROUTES_FIELD_MASK = ",".join([
     "routes.duration",
     "routes.legs.steps.travelMode",
     "routes.legs.steps.staticDuration",
+    "routes.legs.steps.distanceMeters",
     "routes.legs.steps.polyline.encodedPolyline",
     "routes.legs.steps.transitDetails",
 ])
@@ -51,7 +52,6 @@ FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "google"
 
 @dataclass(frozen=True)
 class GoogleSettings:
-    departure_hour: int
     utc_offset_hours: int
     cache_ttl_days: int
     max_retries: int
@@ -62,18 +62,12 @@ class GoogleSettings:
 
 
 # ----------------------------------------------------------------------------- 시각·키
-def next_departure(now: datetime | None, hour: int, utc_offset_hours: int) -> datetime:
-    """오늘 이후 첫 평일의 hour시(현지). 미래 시각이어야 Google이 받아준다."""
-    tz = timezone(timedelta(hours=utc_offset_hours))
-    d = (now or datetime.now(tz)).astimezone(tz).date() + timedelta(days=1)
-    while d.weekday() >= 5:
-        d += timedelta(days=1)
-    return datetime(d.year, d.month, d.day, hour, tzinfo=tz)
+_DOW = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 
-def time_band(departure: datetime) -> str:
-    """캐시 키의 요일·시간대: 'weekday-18' / 'weekend-18'."""
-    return f"{'weekend' if departure.weekday() >= 5 else 'weekday'}-{departure.hour:02d}"
+def time_band(meeting_time: datetime) -> str:
+    """캐시 키의 요일·시간대. 약속이 토요일 18시면 'sat-18' (같은 요일·시간대면 날짜가 달라도 같은 키)."""
+    return f"{_DOW[meeting_time.weekday()]}-{meeting_time.hour:02d}"
 
 
 def coord_key(c: Coord) -> str:
@@ -125,24 +119,31 @@ def _latlng(stop: dict) -> tuple[float, float] | None:
     return (ll["latitude"], ll["longitude"]) if ll else None
 
 
-def convert_route(response: dict, origin: Coord, destination: Coord) -> Route:
-    """computeRoutes 응답 → 공통 Route. 잘게 쪼개진 연속 도보 step은 하나로 합친다."""
+def _parse_time(text: str | None) -> datetime | None:
+    return datetime.fromisoformat(text.replace("Z", "+00:00")) if text else None
+
+
+def convert_route(response: dict, origin: Coord, destination: Coord, utc_offset_hours: int = 9) -> Route:
+    """computeRoutes 응답 → 공통 Route. 잘게 쪼개진 연속 도보 step은 하나로 합치고, 시각·방면·정거장 수를 채운다."""
     routes = response.get("routes") or []
     if not routes:
         raise RouteUnavailable("Google이 경로를 찾지 못했어요")
     route = routes[0]
+    tz = timezone(timedelta(hours=utc_offset_hours))
     raw: list[dict] = []
     for leg in route.get("legs", []):
         for step in leg.get("steps", []):
             points = [tuple(p) for p in decode_polyline((step.get("polyline") or {}).get("encodedPolyline", ""))]
             minutes = _seconds(step.get("staticDuration"))
+            meters = int(step.get("distanceMeters") or 0)
             td = step.get("transitDetails")
             if not td:
                 if raw and raw[-1]["mode"] == WALK:  # 연속 도보 병합
                     raw[-1]["minutes"] += minutes
+                    raw[-1]["meters"] += meters
                     raw[-1]["path"].extend(points)
                 else:
-                    raw.append({"mode": WALK, "minutes": minutes, "path": list(points)})
+                    raw.append({"mode": WALK, "minutes": minutes, "meters": meters, "path": list(points)})
                 continue
             line = td.get("transitLine") or {}
             stops = td.get("stopDetails") or {}
@@ -152,11 +153,32 @@ def convert_route(response: dict, origin: Coord, destination: Coord) -> Route:
             vehicle = ((line.get("vehicle") or {}).get("type")) or ""
             raw.append({
                 "mode": BUS if vehicle in BUS_VEHICLES else SUBWAY,
-                "minutes": minutes, "path": list(points),
+                "minutes": minutes, "meters": meters, "path": list(points),
                 "line_name": line.get("nameShort") or line.get("name"),
-                "line_color": line.get("color"),
+                "line_color": line.get("color"), "line_text_color": line.get("textColor"),
                 "from": dep.get("name"), "to": arr.get("name"),
+                "headsign": td.get("headsign"), "stop_count": td.get("stopCount"),
+                "dep": _parse_time(stops.get("departureTime")), "arr": _parse_time(stops.get("arrivalTime")),
             })
+
+    # 시각: 대중교통 구간은 Google이 준 값, 도보는 앞뒤 구간에서 이어서 계산한다.
+    n = len(raw)
+    dep_t: list[datetime | None] = [r.get("dep") for r in raw]
+    arr_t: list[datetime | None] = [r.get("arr") for r in raw]
+    first = next((i for i, r in enumerate(raw) if r["mode"] != WALK and dep_t[i] and arr_t[i]), None)
+    if first is not None:
+        t = dep_t[first]
+        for i in range(first - 1, -1, -1):          # 첫 승차 전 도보: 승차 시각에서 거꾸로
+            arr_t[i], dep_t[i] = t, t - timedelta(minutes=raw[i]["minutes"])
+            t = dep_t[i]
+        t = arr_t[first]
+        for i in range(first + 1, n):               # 이후: 앞 구간 도착 시각에서 이어서
+            if raw[i]["mode"] == WALK:
+                dep_t[i], arr_t[i] = t, t + timedelta(minutes=raw[i]["minutes"])
+            t = arr_t[i] if arr_t[i] else t
+
+    def iso(value: datetime | None) -> str | None:
+        return value.astimezone(tz).isoformat(timespec="seconds") if value else None
 
     # 도보 구간은 앞뒤 구간과 이어지도록 시작·끝 점을 맞춘다 (출발지/도착지 포함).
     start, end = (origin.lat, origin.lng), (destination.lat, destination.lng)
@@ -165,7 +187,7 @@ def convert_route(response: dict, origin: Coord, destination: Coord) -> Route:
         path = [p for k, p in enumerate(r["path"]) if k == 0 or p != r["path"][k - 1]]
         if r["mode"] == WALK:
             before = raw[i - 1]["path"][-1] if i > 0 and raw[i - 1]["path"] else start
-            after = raw[i + 1]["path"][0] if i + 1 < len(raw) and raw[i + 1]["path"] else end
+            after = raw[i + 1]["path"][0] if i + 1 < n and raw[i + 1]["path"] else end
             path = [before, *path, after]
             path = [p for k, p in enumerate(path) if k == 0 or p != path[k - 1]]
             if len(path) < 2:
@@ -173,10 +195,18 @@ def convert_route(response: dict, origin: Coord, destination: Coord) -> Route:
         segments.append(Segment(
             mode=r["mode"], line_name=r.get("line_name"), line_color=r.get("line_color"),
             from_name=r.get("from"), to_name=r.get("to"), minutes=round(r["minutes"], 1), path=tuple(path),
+            distance_m=r["meters"] or None, departure_time=iso(dep_t[i]), arrival_time=iso(arr_t[i]),
+            headsign=r.get("headsign"), stop_count=r.get("stop_count"), line_text_color=r.get("line_text_color"),
         ))
     transit = sum(1 for s in segments if s.mode != WALK)
-    return Route(total_minutes=round(_seconds(route.get("duration"))), transfers=max(0, transit - 1),
-                 segments=tuple(segments), source="google")
+    walks = [s for s in segments if s.mode == WALK]
+    return Route(
+        total_minutes=round(_seconds(route.get("duration"))), transfers=max(0, transit - 1),
+        segments=tuple(segments), source="google",
+        departure_time=segments[0].departure_time if segments else None,
+        arrival_time=segments[-1].arrival_time if segments else None,
+        walk_minutes=round(sum(s.minutes for s in walks), 1), walk_meters=sum(s.distance_m or 0 for s in walks),
+    )
 
 
 # ----------------------------------------------------------------------------- 저수준 클라이언트
@@ -267,28 +297,23 @@ def _waypoint(c: Coord) -> dict:
 class GoogleRouteProvider(RouteProvider):
     name = "google"
 
-    def __init__(self, client: GoogleClient, settings: GoogleSettings,
-                 now: Callable[[], datetime] | None = None):
+    def __init__(self, client: GoogleClient, settings: GoogleSettings):
         self.client, self.s = client, settings
-        self._now = now
         self._flight = SingleFlight()
 
     @property
     def mode(self) -> str:
         return self.client.mode
 
-    def _departure(self) -> datetime:
-        return next_departure(self._now() if self._now else None, self.s.departure_hour, self.s.utc_offset_hours)
-
-    def _body(self, departure: datetime) -> dict:
+    def _body(self, meeting_time: datetime) -> dict:
+        """약속 시간에 도착하는 기준(arrivalTime)으로 요청한다. 그래야 참여자별 출발 시각이 나온다."""
         return {"travelMode": "TRANSIT", "regionCode": "KR",
-                "departureTime": departure.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "arrivalTime": meeting_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "transitPreferences": {"allowedTravelModes": list(self.s.transit_modes)}}
 
     # --- 1단계 확인용: 상위 후보까지의 실제 소요시간 (검색당 최대 1회) -----------------
-    def matrix(self, origins: Sequence[Coord], destinations: Sequence[Station]) -> MatrixResult:
-        departure = self._departure()
-        band = time_band(departure)
+    def matrix(self, origins: Sequence[Coord], destinations: Sequence[Station], meeting_time: datetime) -> MatrixResult:
+        band = time_band(meeting_time)
         result = MatrixResult(minutes=[[None] * len(destinations) for _ in origins])
         pair_keys = [[f"m|{coord_key(o)}|{d.id}|{band}" for d in destinations] for o in origins]
         use_cache = self.client.mode == "live"
@@ -304,7 +329,7 @@ class GoogleRouteProvider(RouteProvider):
                 return result
 
         request_key = "matrix|" + ";".join(coord_key(o) for o in origins) + "|" + ",".join(d.id for d in destinations) + "|" + band
-        body = {**self._body(departure), "origins": [_waypoint(o) for o in origins],
+        body = {**self._body(meeting_time), "origins": [_waypoint(o) for o in origins],
                 "destinations": [_waypoint(d.coord) for d in destinations]}
 
         def fetch() -> Any:
@@ -330,9 +355,8 @@ class GoogleRouteProvider(RouteProvider):
         return result
 
     # --- 참여자 이름을 눌렀을 때: 상세 경로 -------------------------------------------
-    def route(self, origin: Coord, destination: Station) -> Route:
-        departure = self._departure()
-        key = f"r|{coord_key(origin)}|{destination.id}|{time_band(departure)}"
+    def route(self, origin: Coord, destination: Station, meeting_time: datetime) -> Route:
+        key = f"r|{coord_key(origin)}|{destination.id}|{time_band(meeting_time)}"
         use_cache = self.client.mode == "live"
 
         def fetch() -> Route:
@@ -341,10 +365,10 @@ class GoogleRouteProvider(RouteProvider):
                 if hit is not None:
                     self.client.store.add_usage("cache_hit")
                     return route_from_dict(hit)
-            body = {**self._body(departure), "origin": _waypoint(origin)["waypoint"],
+            body = {**self._body(meeting_time), "origin": _waypoint(origin)["waypoint"],
                     "destination": _waypoint(destination.coord)["waypoint"], "languageCode": "ko"}
             response = self.client.call("route", key, ROUTES_URL, body, ROUTES_FIELD_MASK)
-            route = convert_route(response, origin, destination.coord)
+            route = convert_route(response, origin, destination.coord, self.s.utc_offset_hours)
             if use_cache:
                 self.client.store.put(key, route_to_dict(route))
             return route

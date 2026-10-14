@@ -1,5 +1,5 @@
 /** 지도 연출을 일으킨 동작. App이 동작마다 id를 올려 MapView에 알린다. */
-export type MotionKind = 'origins' | 'search' | 'region' | 'place' | 'route' | 'view' | 'none'
+export type MotionKind = 'origins' | 'search' | 'region' | 'place' | 'route' | 'segment' | 'view' | 'none'
 
 export interface MotionRequest {
   id: number
@@ -11,3 +11,9 @@ export type RouteSelection = number | 'all' | null
 
 /** overview: 출발지·추천 지역 전체 / focus: 선택한 지역(또는 경로)으로 확대 */
 export type ViewMode = 'overview' | 'focus'
+
+/** 타임라인에서 고른 구간: 지도에서 그 구간만 강조하고 그 구간으로 이동한다. */
+export interface SegmentFocus {
+  participant: number
+  segment: number
+}

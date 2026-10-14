@@ -20,7 +20,6 @@ from app.providers.google import (
     GoogleSettings,
     classify_failure,
     convert_route,
-    next_departure,
     time_band,
 )
 from app.route_model import BUS, SUBWAY, WALK
@@ -30,9 +29,10 @@ from app.stations import Station
 
 FIXTURES = Path(__file__).parent / "fixtures"
 KST = timezone(timedelta(hours=9))
-SETTINGS = GoogleSettings(departure_hour=18, utc_offset_hours=9, cache_ttl_days=7, max_retries=1,
+SETTINGS = GoogleSettings(utc_offset_hours=9, cache_ttl_days=7, max_retries=1,
                           backoff_seconds=0, timeout_seconds=5, cooldown_seconds=120)
-NOW = lambda: datetime(2026, 10, 15, 12, 0, tzinfo=KST)  # noqa: E731  (목요일)
+MEETING = datetime(2026, 10, 17, 18, 0, tzinfo=KST)      # 토요일 18시 (기본 약속 시간)
+MEETING_SUN = datetime(2026, 10, 18, 18, 0, tzinfo=KST)  # 일요일 18시 (다른 요일·시간대)
 HAPJEONG = Coord(37.54991, 126.91445)
 EULJIRO = Station(id="s-eulji", name="을지로3가역", coord=Coord(37.56629, 126.99098))
 ANGUK = Station(id="s-anguk", name="안국역", coord=Coord(37.57650, 126.98542))
@@ -50,15 +50,11 @@ def test_polyline_decoder_matches_the_documented_example():
     assert pts == [(38.5, -120.2), (40.7, -120.95), (43.252, -126.453)]
 
 
-def test_departure_is_the_next_weekday_at_6pm_kst():
-    assert next_departure(datetime(2026, 10, 15, 9, 0, tzinfo=KST), 18, 9) == datetime(2026, 10, 16, 18, tzinfo=KST)  # 목→금
-    assert next_departure(datetime(2026, 10, 16, 9, 0, tzinfo=KST), 18, 9) == datetime(2026, 10, 19, 18, tzinfo=KST)  # 금→월
-    assert next_departure(datetime(2026, 10, 17, 9, 0, tzinfo=KST), 18, 9) == datetime(2026, 10, 19, 18, tzinfo=KST)  # 토→월
-
-
-def test_time_band_separates_weekday_and_weekend():
-    assert time_band(datetime(2026, 10, 16, 18, tzinfo=KST)) == "weekday-18"
-    assert time_band(datetime(2026, 10, 17, 18, tzinfo=KST)) == "weekend-18"
+def test_time_band_is_day_of_week_and_hour_of_the_meeting_time():
+    assert time_band(datetime(2026, 10, 17, 18, tzinfo=KST)) == "sat-18"
+    assert time_band(datetime(2026, 10, 24, 18, 30, tzinfo=KST)) == "sat-18"  # 다음 주 같은 요일·시간대는 같은 키
+    assert time_band(datetime(2026, 10, 18, 18, tzinfo=KST)) == "sun-18"
+    assert time_band(datetime(2026, 10, 17, 12, tzinfo=KST)) == "sat-12"
 
 
 # --------------------------------------------------------------------------- Google 응답 → 공통 스키마 (실제 녹화 응답)
@@ -105,7 +101,7 @@ class TestConvertRoute:
         assert all(s.mode == SUBWAY for s in transit) and route.transfers == 1
 
     def test_real_bus_route_keeps_line_name_color_stops_and_path(self):
-        resp, origin, dest = load("bus_naegok_gangnam")  # 서초구 내곡동(역에서 1.5km) → 강남역, 버스 741
+        resp, origin, dest = load("arrive_bus_naegok_gangnam")  # 서초구 내곡동(역에서 1.5km) → 강남역, 버스 741
         route = convert_route(resp, origin, dest)
         assert (route.source, route.total_minutes, route.transfers) == ("google", 35, 0)
         assert [s.mode for s in route.segments] == [WALK, BUS, WALK]
@@ -184,26 +180,32 @@ def provider(tmp_path, http, mode="live", key="secret-key", clock=None, fixtures
     if clock:
         kwargs["clock"] = clock
     client = GoogleClient(key, mode, store, SETTINGS, http=http, sleep=lambda s: None, **kwargs)
-    return GoogleRouteProvider(client, SETTINGS, now=NOW), store, http
+    return GoogleRouteProvider(client, SETTINGS), store, http
 
 
-def test_matrix_request_uses_transit_future_departure_and_minimal_field_mask(tmp_path):
+def test_matrix_request_arrives_at_the_meeting_time_with_a_minimal_field_mask(tmp_path):
     p, _, http = provider(tmp_path, ScriptedHttp(matrix_ok(2, 2)))
-    p.matrix([HAPJEONG, Coord(37.51, 127.10)], [EULJIRO, ANGUK])
+    p.matrix([HAPJEONG, Coord(37.51, 127.10)], [EULJIRO, ANGUK], MEETING)
     (req,) = http.requests
     assert req["url"] == MATRIX_URL
     assert req["headers"]["X-Goog-FieldMask"] == MATRIX_FIELD_MASK == "originIndex,destinationIndex,duration,condition,status"
-    assert req["json"]["travelMode"] == "TRANSIT" and req["json"]["departureTime"] == "2026-10-16T09:00:00Z"  # 금 18시 KST
+    assert req["json"]["travelMode"] == "TRANSIT" and req["json"]["arrivalTime"] == "2026-10-17T09:00:00Z"  # 토 18시 KST에 도착
     assert len(req["json"]["origins"]) == 2 and len(req["json"]["destinations"]) == 2
+    assert "departureTime" not in req["json"]  # departureTime과 arrivalTime은 함께 쓸 수 없다
     assert req["json"]["transitPreferences"]["allowedTravelModes"] == ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL"]  # 버스 포함
 
 
 def test_route_request_uses_the_minimal_field_mask(tmp_path):
     p, _, http = provider(tmp_path, ScriptedHttp(ROUTE_OK))
-    p.route(HAPJEONG, EULJIRO)
+    p.route(HAPJEONG, EULJIRO, MEETING)
     assert http.requests[0]["url"] == ROUTES_URL and http.requests[0]["headers"]["X-Goog-FieldMask"] == ROUTES_FIELD_MASK
     assert "BUS" in http.requests[0]["json"]["transitPreferences"]["allowedTravelModes"]
-    assert "distanceMeters" not in ROUTES_FIELD_MASK  # 쓰지 않는 필드는 요청하지 않는다
+    body = http.requests[0]["json"]
+    assert body["arrivalTime"] == "2026-10-17T09:00:00Z" and "departureTime" not in body  # 약속 시간 도착 기준
+    assert body["languageCode"] == "ko" and body["regionCode"] == "KR"                      # 역·정류장 이름은 한국어
+    # 쓰는 필드만: 도보 구간 거리(타임라인의 "1.0km")는 필요하지만 경로 전체 거리·개요 같은 건 요청하지 않는다
+    assert "routes.legs.steps.distanceMeters" in ROUTES_FIELD_MASK
+    assert "routes.distanceMeters" not in ROUTES_FIELD_MASK and "stepsOverview" not in ROUTES_FIELD_MASK
 
 
 def test_matrix_maps_cells_and_leaves_failed_cells_empty(tmp_path):
@@ -211,25 +213,44 @@ def test_matrix_maps_cells_and_leaves_failed_cells_empty(tmp_path):
             {"originIndex": 0, "destinationIndex": 1, "condition": "ROUTE_NOT_FOUND"},
             {"originIndex": 1, "destinationIndex": 0, "duration": "600s", "condition": "ROUTE_EXISTS", "status": {"code": 13}}]
     p, _, _ = provider(tmp_path, ScriptedHttp(Resp(200, body)))
-    result = p.matrix([HAPJEONG, Coord(37.51, 127.1)], [EULJIRO, ANGUK])
+    result = p.matrix([HAPJEONG, Coord(37.51, 127.1)], [EULJIRO, ANGUK], MEETING)
     assert result.minutes == [[20.0, None], [None, None]]
 
 
 def test_live_mode_caches_matrix_and_route_by_coordinates_station_and_time_band(tmp_path):
     p, store, http = provider(tmp_path, ScriptedHttp(matrix_ok(1, 1), ROUTE_OK))
-    p.matrix([Coord(37.549912, 126.914412)], [EULJIRO])
-    again = p.matrix([Coord(37.549949, 126.914449)], [EULJIRO])  # 소수 4자리로 반올림하면 같은 출발지 (37.5499, 126.9144)
+    p.matrix([Coord(37.549912, 126.914412)], [EULJIRO], MEETING)
+    again = p.matrix([Coord(37.549949, 126.914449)], [EULJIRO], MEETING)  # 소수 4자리로 반올림하면 같은 출발지 (37.5499, 126.9144)
     assert len(http.requests) == 1 and again.api_calls == 0 and again.cache_hits == 1
-    p.route(HAPJEONG, EULJIRO)
-    p.route(HAPJEONG, EULJIRO)
+    p.route(HAPJEONG, EULJIRO, MEETING)
+    p.route(HAPJEONG, EULJIRO, MEETING)
     assert [r["url"] for r in http.requests] == [MATRIX_URL, ROUTES_URL]
     assert store.usage()["cache_hit"] >= 2
 
 
+def test_cache_key_includes_the_meeting_day_and_hour_but_not_the_date(tmp_path):
+    p, _, http = provider(tmp_path, ScriptedHttp(ROUTE_OK))
+    p.route(HAPJEONG, EULJIRO, MEETING)
+    p.route(HAPJEONG, EULJIRO, MEETING + timedelta(days=7))  # 다음 주 토요일 18시: 같은 요일·시간대 → 캐시
+    assert len(http.requests) == 1
+    p.route(HAPJEONG, EULJIRO, MEETING_SUN)                  # 일요일 18시: 다른 키 → 새 호출
+    p.route(HAPJEONG, EULJIRO, MEETING.replace(hour=12))     # 토요일 12시: 다른 키 → 새 호출
+    assert len(http.requests) == 3
+    assert [r["json"]["arrivalTime"] for r in http.requests] == ["2026-10-17T09:00:00Z", "2026-10-18T09:00:00Z", "2026-10-17T03:00:00Z"]
+
+
+def test_matrix_cache_is_also_scoped_by_the_meeting_time_band(tmp_path):
+    p, _, http = provider(tmp_path, ScriptedHttp(matrix_ok(1, 1)))
+    p.matrix([HAPJEONG], [EULJIRO], MEETING)
+    assert p.matrix([HAPJEONG], [EULJIRO], MEETING + timedelta(days=7)).cache_hits == 1
+    p.matrix([HAPJEONG], [EULJIRO], MEETING_SUN)
+    assert len(http.requests) == 2
+
+
 def test_cache_is_scoped_per_destination(tmp_path):
     p, _, http = provider(tmp_path, ScriptedHttp(ROUTE_OK))
-    p.route(HAPJEONG, EULJIRO)
-    p.route(HAPJEONG, ANGUK)
+    p.route(HAPJEONG, EULJIRO, MEETING)
+    p.route(HAPJEONG, ANGUK, MEETING)
     assert len(http.requests) == 2
 
 
@@ -239,7 +260,7 @@ def test_concurrent_identical_requests_make_one_call(tmp_path):
 
     def click():
         try:
-            results.append(p.route(HAPJEONG, EULJIRO))
+            results.append(p.route(HAPJEONG, EULJIRO, MEETING))
         except Exception as e:  # noqa: BLE001
             errors.append(e)
 
@@ -275,14 +296,14 @@ def test_single_flight_propagates_the_leaders_error_to_waiters():
 
 def test_transient_error_is_retried_once_then_succeeds(tmp_path):
     p, store, http = provider(tmp_path, ScriptedHttp(Resp(503, {}), ROUTE_OK))
-    assert p.route(HAPJEONG, EULJIRO).total_minutes == 16
+    assert p.route(HAPJEONG, EULJIRO, MEETING).total_minutes == 16
     assert len(http.requests) == 2 and store.usage()["route"] == 2  # 시도마다 센다
 
 
 def test_network_error_is_retried_only_once(tmp_path):
     p, _, http = provider(tmp_path, ScriptedHttp(httpx.ConnectError("down")))
     with pytest.raises(RouteUnavailable, match="네트워크"):
-        p.route(HAPJEONG, EULJIRO)
+        p.route(HAPJEONG, EULJIRO, MEETING)
     assert len(http.requests) == 2  # 최초 1회 + 재시도 1회까지만
 
 
@@ -291,26 +312,26 @@ def test_permanent_error_is_not_retried_and_pauses_further_calls(tmp_path):
     forbidden = Resp(403, {"error": {"status": "PERMISSION_DENIED", "message": "Routes API has not been used"}})
     p, _, http = provider(tmp_path, ScriptedHttp(forbidden), clock=lambda: now[0])
     with pytest.raises(RouteUnavailable, match="Routes API"):
-        p.route(HAPJEONG, EULJIRO)
+        p.route(HAPJEONG, EULJIRO, MEETING)
     assert len(http.requests) == 1  # 재시도 없음
     with pytest.raises(RouteUnavailable, match="중단"):
-        p.route(HAPJEONG, ANGUK)
+        p.route(HAPJEONG, ANGUK, MEETING)
     assert len(http.requests) == 1  # 쿨다운 동안 호출 없음
     now[0] += 121
     http.script = [ROUTE_OK]
-    assert p.route(HAPJEONG, ANGUK).total_minutes == 16 and len(http.requests) == 2
+    assert p.route(HAPJEONG, ANGUK, MEETING).total_minutes == 16 and len(http.requests) == 2
 
 
 def test_matrix_failure_is_reported_instead_of_raised(tmp_path):
     p, _, _ = provider(tmp_path, ScriptedHttp(Resp(403, {"error": {"message": "Requests from this IP are blocked"}})))
-    result = p.matrix([HAPJEONG], [EULJIRO])
+    result = p.matrix([HAPJEONG], [EULJIRO], MEETING)
     assert result.minutes == [[None]] and "키 제한" in result.error
 
 
 def test_missing_key_never_calls_google(tmp_path):
     p, _, http = provider(tmp_path, ScriptedHttp(ROUTE_OK), key="")
     with pytest.raises(RouteUnavailable, match="GOOGLE_ROUTES_KEY"):
-        p.route(HAPJEONG, EULJIRO)
+        p.route(HAPJEONG, EULJIRO, MEETING)
     assert http.requests == []
 
 
@@ -318,7 +339,7 @@ def test_api_key_is_never_leaked_in_errors_or_logs(tmp_path, caplog):
     caplog.set_level(logging.DEBUG)
     p, _, _ = provider(tmp_path, ScriptedHttp(httpx.ConnectError("https://x?key=secret-key failed")))
     with pytest.raises(RouteUnavailable) as e:
-        p.route(HAPJEONG, EULJIRO)
+        p.route(HAPJEONG, EULJIRO, MEETING)
     assert "secret-key" not in str(e.value) and "secret-key" not in caplog.text
 
 
@@ -326,30 +347,30 @@ def test_api_key_is_never_leaked_in_errors_or_logs(tmp_path, caplog):
 def test_replay_mode_never_calls_google_and_fails_clearly_without_a_recording(tmp_path):
     p, store, http = provider(tmp_path, ScriptedHttp(ROUTE_OK), mode="replay", fixtures=tmp_path / "fx")
     with pytest.raises(RouteUnavailable, match="저장된 응답이 없어요"):
-        p.route(HAPJEONG, EULJIRO)
+        p.route(HAPJEONG, EULJIRO, MEETING)
     assert http.requests == [] and store.usage()["replay_miss"] == 1
-    assert p.matrix([HAPJEONG], [EULJIRO]).error  # 매트릭스도 호출 없이 실패로 보고
+    assert p.matrix([HAPJEONG], [EULJIRO], MEETING).error  # 매트릭스도 호출 없이 실패로 보고
 
 
 def test_record_mode_saves_real_responses_and_replay_reads_them_with_zero_calls(tmp_path):
     fx = tmp_path / "fx"
     rec, _, rec_http = provider(tmp_path, ScriptedHttp(matrix_ok(1, 1, minutes=18), ROUTE_OK), mode="record", fixtures=fx)
-    assert rec.matrix([HAPJEONG], [EULJIRO]).minutes == [[18.0]]
-    assert rec.route(HAPJEONG, EULJIRO).total_minutes == 16
+    assert rec.matrix([HAPJEONG], [EULJIRO], MEETING).minutes == [[18.0]]
+    assert rec.route(HAPJEONG, EULJIRO, MEETING).total_minutes == 16
     assert len(rec_http.requests) == 2 and len(list(fx.glob("*.json"))) == 2
     saved = json.loads(next(fx.glob("route-*.json")).read_text(encoding="utf-8"))
     assert saved["kind"] == "route" and "routes" in saved["response"] and "secret-key" not in json.dumps(saved)
 
     rep, store, rep_http = provider(tmp_path / "other", ScriptedHttp(), mode="replay", fixtures=fx) if (tmp_path / "other").mkdir() is None else (None, None, None)
-    assert rep.matrix([HAPJEONG], [EULJIRO]).minutes == [[18.0]]
-    assert rep.route(HAPJEONG, EULJIRO).segments[0].line_name == "2호선"
+    assert rep.matrix([HAPJEONG], [EULJIRO], MEETING).minutes == [[18.0]]
+    assert rep.route(HAPJEONG, EULJIRO, MEETING).segments[0].line_name == "2호선"
     assert rep_http.requests == [] and store.usage()["replay_hit"] == 2
 
 
 def test_record_mode_always_calls_even_if_the_cache_has_the_answer(tmp_path):
     p, _, http = provider(tmp_path, ScriptedHttp(ROUTE_OK), mode="record", fixtures=tmp_path / "fx")
-    p.route(HAPJEONG, EULJIRO)
-    p.route(HAPJEONG, EULJIRO)
+    p.route(HAPJEONG, EULJIRO, MEETING)
+    p.route(HAPJEONG, EULJIRO, MEETING)
     assert len(http.requests) == 2  # 녹화는 캐시를 쓰지 않는다 (live만 캐시)
 
 

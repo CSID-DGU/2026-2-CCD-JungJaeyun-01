@@ -209,7 +209,7 @@ class OdsayRouteProvider(RouteProvider):
         self.store.put(key, {"minutes": result.minutes, "route": route_to_dict(result.route) if result.route else None})
         return result
 
-    def matrix(self, origins: Sequence[Coord], destinations: Sequence[Station]) -> MatrixResult:
+    def matrix(self, origins: Sequence[Coord], destinations: Sequence[Station], meeting_time=None) -> MatrixResult:
         result = MatrixResult(minutes=[[None] * len(destinations) for _ in origins])
         before = self.client.http_calls
         for i, o in enumerate(origins):
@@ -221,7 +221,7 @@ class OdsayRouteProvider(RouteProvider):
         result.api_calls = self.client.http_calls - before
         return result
 
-    def route(self, origin: Coord, destination: Station) -> Route:
+    def route(self, origin: Coord, destination: Station, meeting_time=None) -> Route:
         route = self._lookup(origin, destination).route
         if route is None:
             raise RouteUnavailable("ODsay: 경로 상세 정보를 받지 못했어요")

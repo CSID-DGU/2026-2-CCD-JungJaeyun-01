@@ -4,8 +4,10 @@ import DevUsage from './components/DevUsage'
 import InputForm from './components/InputForm'
 import MapView, { type OriginMarker } from './components/MapView'
 import ResultPanel from './components/ResultPanel'
+import type { TimelinePlay } from './components/RouteTimeline'
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, PARTICIPANT_COLORS } from './constants'
-import type { MotionKind, MotionRequest, RouteSelection, ViewMode } from './map/types'
+import type { MotionKind, MotionRequest, RouteSelection, SegmentFocus, ViewMode } from './map/types'
+import { defaultMeetingTime, isMeetingFarEnough, toMeetingIso } from './meeting'
 import { routeKey, type RouteEntries, type RouteEntry } from './routes'
 import type { Purpose, RecommendResponse } from './types'
 import { toRequest, validateParticipants, type FieldErrors, type FormParticipant } from './validate'
@@ -21,6 +23,8 @@ function App() {
   const panelRef = useRef<HTMLElement>(null)
   const [participants, setParticipants] = useState<FormParticipant[]>(initialParticipants)
   const [purpose, setPurpose] = useState<Purpose>('meal')
+  const [meetingTime, setMeetingTime] = useState<string>(() => defaultMeetingTime()) // 다음 토요일 오후 6시
+  const [meetingError, setMeetingError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -28,9 +32,11 @@ function App() {
   const [selectedRegion, setSelectedRegion] = useState(0)
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
   const [routeSelection, setRouteSelection] = useState<RouteSelection>(null)
+  const [segmentFocus, setSegmentFocus] = useState<SegmentFocus | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('overview')
   const [motion, setMotion] = useState<MotionRequest>({ id: 0, kind: 'none' })
   const [routes, setRoutes] = useState<RouteEntries>({})
+  const [plays, setPlays] = useState<Record<string, TimelinePlay>>({})
   const [usageTick, setUsageTick] = useState(0)
 
   // 콜백(지도에 넘기는 안정적인 함수)이 항상 최신 값을 보도록 ref에 둔다.
@@ -56,25 +62,47 @@ function App() {
     routesRef.current = {}
     pending.current.clear()
     setRoutes({})
+    setPlays({})
   }, [])
 
-  /** 선택한 참여자들의 상세 경로를 불러온다. 이미 있거나 불러오는 중이면 재사용한다 (백엔드도 캐시한다). */
+  /** 타임라인 등장 모션: 지도에서 이 참여자의 경로 그리기가 시작되는 순간에 맞춰 재생한다. */
+  const onRouteDrawStart = useCallback((indexes: number[], staggerMs: number) => {
+    const region = latest.current.data?.regions[latest.current.selectedRegion]
+    if (!region) return
+    const base = Date.now()
+    setPlays((prev) => {
+      const next = { ...prev }
+      indexes.forEach((i, order) => {
+        next[routeKey(region.station.id, i)] = { token: base + order, delayMs: order * staggerMs }
+      })
+      return next
+    })
+  }, [])
+
+  /**
+   * 선택한 참여자들의 상세 경로를 불러온다 (약속 시간 도착 기준). 이미 있거나 불러오는 중이면 재사용한다.
+   * 1단계 추정값만 있는 참여자는 explicit(버튼)일 때만 불러온다 — 그 전에는 안내만 보여준다.
+   */
   const ensureRoutes = useCallback(
-    async (regionIndex: number, indexes: number[]) => {
+    async (regionIndex: number, indexes: number[], explicit = false) => {
       const { data: current, participants: people } = latest.current
       const region = current?.regions[regionIndex]
-      if (!region) return
+      if (!current || !region) return
       const jobs = indexes.map((i) => {
         const key = routeKey(region.station.id, i)
-        const existing = routesRef.current[key]
-        if (existing?.status === 'ok') return Promise.resolve()
+        if (routesRef.current[key]?.status === 'ok') return Promise.resolve()
+        if (region.participants[i]?.is_estimated && !explicit) return Promise.resolve()
         const inFlight = pending.current.get(key)
         if (inFlight) return inFlight
         const origin = people[i]?.origin
         if (!origin) return Promise.resolve()
         setEntry(key, { status: 'loading' })
-        const job = fetchRoute(origin.lat, origin.lng, region.station.id)
-          .then((res) => setEntry(key, { status: 'ok', route: res.route, note: res.note }))
+        const job = fetchRoute(origin.lat, origin.lng, region.station.id, current.meta.meeting_time)
+          .then((res) => {
+            setEntry(key, { status: 'ok', route: res.route, note: res.note })
+            // 지도에서 그리기가 시작되지 않더라도(이동이 취소된 경우 등) 타임라인이 영영 숨지 않도록
+            setTimeout(() => setPlays((prev) => (prev[key] ? prev : { ...prev, [key]: { token: Date.now(), delayMs: 0 } })), 2500)
+          })
           .catch((e: unknown) =>
             setEntry(key, { status: 'error', message: e instanceof Error ? e.message : '경로를 불러오지 못했어요.' }),
           )
@@ -101,12 +129,17 @@ function App() {
       ),
     [participants],
   )
+  const originInfos = useMemo(
+    () => participants.map((p, i) => ({ name: p.name.trim() || `참여자 ${i + 1}`, address: p.origin?.address ?? p.origin?.name ?? '' })),
+    [participants],
+  )
   const regions = useMemo(() => data?.regions ?? [], [data])
 
   const selectRegion = useCallback(
     async (index: number) => {
       setSelectedRegion(index)
       setSelectedPlaceId(null)
+      setSegmentFocus(null)
       setViewMode('focus')
       const selection = latest.current.routeSelection
       if (selection === null) {
@@ -135,6 +168,7 @@ function App() {
     async (selection: RouteSelection) => {
       const token = ++selectionToken.current
       setRouteSelection(selection)
+      setSegmentFocus(null)
       if (selection === null) {
         bumpMotion('route')
         return
@@ -146,6 +180,25 @@ function App() {
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bumpMotion, ensureRoutes],
+  )
+
+  /** "실제 경로 불러오기" 버튼: 추정값만 있던 참여자의 경로를 지금 조회하고 지도에 그린다. */
+  const loadRoute = useCallback(
+    async (participantIndex: number) => {
+      const token = ++selectionToken.current
+      await ensureRoutes(latest.current.selectedRegion, [participantIndex], true)
+      if (token === selectionToken.current) bumpMotion('route')
+    },
+    [bumpMotion, ensureRoutes],
+  )
+
+  /** 타임라인의 구간 클릭: 지도에서 그 구간만 강조하고 그 구간으로 이동. 같은 구간을 다시 누르면 해제. */
+  const focusSegment = useCallback(
+    (participant: number, segment: number | null) => {
+      setSegmentFocus(segment === null ? null : { participant, segment })
+      bumpMotion('segment')
+    },
+    [bumpMotion],
   )
 
   const toggleView = useCallback(() => {
@@ -180,19 +233,26 @@ function App() {
   async function submit() {
     const found = validateParticipants(participants)
     setErrors(found)
-    if (Object.keys(found).length > 0) {
+    const meetingProblem = !meetingTime
+      ? '약속 시간을 입력해 주세요.'
+      : !isMeetingFarEnough(meetingTime)
+        ? '약속 시간은 지금부터 30분 이상 뒤여야 해요.'
+        : null
+    setMeetingError(meetingProblem)
+    if (Object.keys(found).length > 0 || meetingProblem) {
       setSubmitError('입력하지 않은 항목이 있어요. 붉게 표시된 칸을 확인해 주세요.')
       return
     }
     setSubmitError(null)
     setLoading(true)
     try {
-      const result = await recommend(toRequest(participants, purpose))
-      resetRoutes() // 참여자·지역이 바뀌었을 수 있으니 이전 경로는 버린다
+      const result = await recommend(toRequest(participants, purpose, toMeetingIso(meetingTime)))
+      resetRoutes() // 참여자·지역·약속 시간이 바뀌었을 수 있으니 이전 경로는 버린다
       setData(result)
       setSelectedRegion(0)
       setSelectedPlaceId(null)
       setRouteSelection(null)
+      setSegmentFocus(null)
       setViewMode('overview')
       bumpMotion('search') // 전체를 보여준 뒤 1·2·3위 마커가 순서대로 떨어진다
       setUsageTick((t) => t + 1)
@@ -213,12 +273,14 @@ function App() {
           selectedPlaceId={selectedPlaceId}
           routeSelection={routeSelection}
           routes={routes}
+          segmentFocus={segmentFocus}
           viewMode={viewMode}
           motion={motion}
           obstacleRef={panelRef}
           onSelectRegion={selectRegion}
           onSelectPlace={selectPlace}
           onToggleView={toggleView}
+          onRouteDrawStart={onRouteDrawStart}
         />
       </section>
 
@@ -230,14 +292,20 @@ function App() {
             selectedPlaceId={selectedPlaceId}
             routeSelection={routeSelection}
             routes={routes}
+            origins={originInfos}
+            plays={plays}
+            segmentFocus={segmentFocus}
             onSelectRegion={selectRegion}
             onSelectPlace={selectPlace}
             onSelectRoute={selectRoute}
+            onFocusSegment={focusSegment}
+            onLoadRoute={loadRoute}
             onBack={() => {
               selectionToken.current++
               setData(null)
               setSelectedPlaceId(null)
               setRouteSelection(null)
+              setSegmentFocus(null)
               setViewMode('overview')
               bumpMotion('origins')
             }}
@@ -246,6 +314,8 @@ function App() {
           <InputForm
             participants={participants}
             purpose={purpose}
+            meetingTime={meetingTime}
+            meetingError={meetingError}
             errors={errors}
             loading={loading}
             submitError={submitError}
@@ -253,6 +323,10 @@ function App() {
             onAdd={addParticipant}
             onRemove={removeParticipant}
             onPurpose={setPurpose}
+            onMeetingTime={(value) => {
+              setMeetingTime(value)
+              setMeetingError(null)
+            }}
             onSubmit={submit}
           />
         )}

@@ -11,11 +11,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
+      // /api/* 는 경로를 바꾸지 않고 그대로 백엔드로 전달한다.
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
 })

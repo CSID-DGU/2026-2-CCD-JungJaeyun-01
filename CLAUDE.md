@@ -39,6 +39,9 @@ meetup-recommender/
   - 예: `PlaceService` → `MockPlaceService`, `KakaoPlaceService`
 - 환경변수 `USE_MOCK=true/false`로 구현을 전환한다 (`app.settings.USE_MOCK`). 라우터·점수 계산 코드는 구현체가 아니라 인터페이스에만 의존한다.
 - mock 구현은 API 키 없이도 전체 흐름이 동작하도록 현실적인 고정 데이터를 반환한다.
+- 예외: 출발지 자동완성 `GET /api/search/places`(`services/place_lookup.py`)는 mock 없이 `USE_MOCK`과 관계없이 항상 실제 카카오 키워드 검색을 쓴다.
+- ODsay 조회가 재시도 후에도 실패한 출발지-역 조합은 후보에서 빼지 않고 mock의 거리 기반 추정치로 대체하며, 응답에 `is_estimated`로 표시한다 (추정치는 캐시하지 않는다).
+- 카카오맵 SDK는 카카오 개발자 콘솔의 Web 플랫폼에 `http://localhost:5173`이 등록되어 있어야 로드된다.
 
 ### 점수 계산
 - RegionScore, PlaceScore의 **가중치는 `backend/config/` 아래 설정 파일로 분리**한다. 코드에 가중치를 하드코딩하지 않는다.
@@ -78,5 +81,5 @@ npm install
 npm run dev
 ```
 
-- 개발 서버에서 `/api/*` 요청은 백엔드(`localhost:8000`)로 프록시된다. 예: `fetch('/api/health')`
+- 개발 서버에서 `/api/*` 요청은 경로 그대로 백엔드(`localhost:8000`)로 프록시된다. 예: `fetch('/api/health')`
 - 빌드: `npm run build`

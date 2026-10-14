@@ -58,12 +58,14 @@ class MetricRanksOut(BaseModel):
 class ParticipantTravelOut(BaseModel):
     name: str
     minutes: float
+    is_estimated: bool = False  # True면 ODsay 조회에 실패해 거리 기반으로 추정한 값
 
 
 class RegionOut(BaseModel):
     rank: int
     station: StationOut
     score: float
+    reason: str
     metrics: MetricsOut
     normalized: NormalizedOut
     metric_ranks: MetricRanksOut
@@ -76,8 +78,11 @@ class WeightsOut(BaseModel):
     std: float
 
 
-class ExcludedStationOut(BaseModel):
+class EstimatedTravelOut(BaseModel):
+    """ODsay 조회에 실패해 추정치로 대체한 출발지-역 조합과 실패 사유."""
+
     station: str
+    participant: str
     reason: str
 
 
@@ -86,7 +91,7 @@ class RegionRecommendMeta(BaseModel):
     centroid: LatLng
     candidate_count: int
     evaluated_count: int
-    excluded_stations: list[ExcludedStationOut]
+    estimated_travel: list[EstimatedTravelOut]
     weights: WeightsOut
     travel_source: str
 

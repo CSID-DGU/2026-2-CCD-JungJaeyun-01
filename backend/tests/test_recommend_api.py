@@ -60,30 +60,69 @@ def test_coordinates_outside_korea_rejected(client):
     assert post(client, [HONGDAE, {**JAMSIL, "lat": 0.0}]).status_code == 422
 
 
-def test_no_reachable_region_returns_503(client):
+def test_failed_pair_uses_estimate_and_is_flagged(client):
+    class FailsForOnePair(MockTravelTimeService):
+        def get_minutes(self, origin, station):
+            if station.name == "청량리역" and origin.lat == HONGDAE["lat"]:
+                raise TravelTimeUnavailable("ODsay 429 Daily quota exceeded (재시도 2회 후에도 실패)")
+            return super().get_minutes(origin, station)
+
+    app.dependency_overrides[get_travel_time_service] = lambda: FailsForOnePair(load_travel_config().mock)
+    body = post(client, [HONGDAE, JAMSIL, NOWON]).json()
+
+    assert body["meta"]["evaluated_count"] == 12  # 후보에서 빠지지 않는다
+    assert body["meta"]["estimated_travel"] == [{
+        "station": "청량리역", "participant": "민지",
+        "reason": "ODsay 429 Daily quota exceeded (재시도 2회 후에도 실패)",
+    }]
+    first = body["regions"][0]
+    assert first["station"]["name"] == "청량리역"
+    assert [p["is_estimated"] for p in first["participants"]] == [True, False, False]
+    # 추정치는 mock의 거리 기반 값이므로 정상 mock 결과와 같다
+    assert all(p["is_estimated"] is False for r in body["regions"][1:] for p in r["participants"])
+
+
+def test_all_pairs_failing_still_returns_estimated_regions(client):
     class Unreachable:
-        source = "mock"
+        source = "odsay"
 
         def get_minutes(self, origin, station):
             raise TravelTimeUnavailable("ODsay 429 Daily quota exceeded")
 
     app.dependency_overrides[get_travel_time_service] = Unreachable
-    assert post(client, [HONGDAE, JAMSIL]).status_code == 503
+    r = post(client, [HONGDAE, JAMSIL])
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["regions"]) == 3
+    assert all(p["is_estimated"] for reg in body["regions"] for p in reg["participants"])
+    assert len(body["meta"]["estimated_travel"]) == 12 * 2
 
 
-def test_failed_station_is_excluded_with_reason(client):
-    class FailsForOneStation(MockTravelTimeService):
+def test_estimated_values_are_not_cached(client, tmp_path):
+    from app.recommend import recommend_regions
+    from app.schemas import RegionRecommendRequest
+    from app.services.travel_cache import CachedTravelTimeService, TravelTimeCache
+    from app.stations import load_stations
+    from app.config import load_region_config
+
+    class AlwaysFails:
+        source = "odsay"
+
         def get_minutes(self, origin, station):
-            if station.name == "청량리역":
-                raise TravelTimeUnavailable("ODsay 429 Daily quota exceeded (재시도 2회 후에도 실패)")
-            return super().get_minutes(origin, station)
+            raise TravelTimeUnavailable("실패")
 
-    app.dependency_overrides[get_travel_time_service] = lambda: FailsForOneStation(load_travel_config().mock)
-    meta = post(client, [HONGDAE, JAMSIL, NOWON]).json()["meta"]
-    assert meta["evaluated_count"] == 11
-    assert meta["excluded_stations"] == [
-        {"station": "청량리역", "reason": "민지 출발: ODsay 429 Daily quota exceeded (재시도 2회 후에도 실패)"}
-    ]
+    cache = TravelTimeCache(tmp_path / "c.sqlite3")
+    request = RegionRecommendRequest(participants=[HONGDAE, JAMSIL], purpose="meal")
+    result = recommend_regions(request, CachedTravelTimeService(AlwaysFails(), cache),
+                               load_stations(), load_region_config())
+    assert all(p.is_estimated for r in result.regions for p in r.participants)
+    assert cache.count("odsay") == 0  # 추정치가 ODsay 결과로 저장되면 안 된다
+
+
+def test_region_has_one_line_reason(client):
+    region = post(client, [HONGDAE, JAMSIL, NOWON]).json()["regions"][0]
+    assert region["reason"].startswith("후보 12곳 중") or "고르게" in region["reason"]
+    assert "평균" in region["reason"]
 
 
 # --------------------------------------------------------------------------- POST /api/recommend
@@ -165,3 +204,37 @@ def test_ratings_are_requested_only_for_top_five_per_region(full_client):
     app.dependency_overrides[get_rating_service] = Spy
     post_full(full_client)
     assert len(calls) == 15  # 지역 3곳 × 5곳, 후보 45곳 전체가 아님
+
+
+# --------------------------------------------------------------------------- GET /api/search/places
+from app.routers.search import get_place_lookup_service  # noqa: E402
+from app.services.place_lookup import KakaoPlaceLookupService, PlaceHit, PlaceLookupError  # noqa: E402
+
+
+def test_search_places_returns_hits(client):
+    class Fake:
+        def search(self, query):
+            return [PlaceHit("1", f"{query}역 2호선", "서울 마포구", "교통 > 지하철", 37.55, 126.92)]
+
+    app.dependency_overrides[get_place_lookup_service] = Fake
+    r = client.get("/api/search/places", params={"query": "홍대입구"})
+    assert r.status_code == 200
+    assert r.json() == [{"id": "1", "name": "홍대입구역 2호선", "address": "서울 마포구",
+                         "category": "교통 > 지하철", "lat": 37.55, "lng": 126.92}]
+
+
+def test_search_places_requires_query_and_maps_errors(client):
+    assert client.get("/api/search/places").status_code == 422
+
+    class Broken:
+        def search(self, query):
+            raise PlaceLookupError("카카오 검색 오류(HTTP 403)")
+
+    app.dependency_overrides[get_place_lookup_service] = Broken
+    r = client.get("/api/search/places", params={"query": "강남"})
+    assert (r.status_code, r.json()["detail"]) == (502, "카카오 검색 오류(HTTP 403)")
+
+
+def test_search_places_without_key_fails_cleanly():
+    with pytest.raises(PlaceLookupError):
+        KakaoPlaceLookupService("").search("강남")

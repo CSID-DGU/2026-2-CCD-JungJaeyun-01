@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.config import PlaceConfig, RegionConfig, load_place_config, load_region_config
 from app.place_recommend import recommend_with_places
-from app.recommend import NoReachableRegionError, recommend_regions
+from app.recommend import recommend_regions
 from app.schemas import (
     RecommendResponse,
     RegionRecommendRequest,
@@ -32,11 +32,8 @@ def post_recommend(
     place_config: PlaceConfig = Depends(load_place_config),
 ) -> RecommendResponse:
     """상위 3개 지역 + 지역별 이동시간 지표 + 지역별 상위 5개 장소를 한 번에 반환한다."""
-    try:
-        return recommend_with_places(request, travel_service, place_service, rating_service,
-                                     stations, region_config, place_config)
-    except NoReachableRegionError as e:
-        raise HTTPException(status_code=503, detail=str(e)) from e
+    return recommend_with_places(request, travel_service, place_service, rating_service,
+                                 stations, region_config, place_config)
 
 
 @router.post("/regions", response_model=RegionRecommendResponse)
@@ -47,7 +44,4 @@ def post_recommend_regions(
     config: RegionConfig = Depends(load_region_config),
 ) -> RegionRecommendResponse:
     """지역(역) 추천만 필요할 때."""
-    try:
-        return recommend_regions(request, service, stations, config)
-    except NoReachableRegionError as e:
-        raise HTTPException(status_code=503, detail=str(e)) from e
+    return recommend_regions(request, service, stations, config)

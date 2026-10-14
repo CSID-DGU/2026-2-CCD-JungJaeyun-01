@@ -70,8 +70,8 @@ def main() -> None:
 
     print(f"\n가중치(지역) 평균 {meta.weights.avg}/최대 {meta.weights.max}/편차 {meta.weights.std} | "
           f"후보 {meta.candidate_count}개 중 {meta.evaluated_count}개 평가")
-    for ex in meta.excluded_stations:
-        print(f"  제외: {ex.station} ← {ex.reason}")
+    for ex in meta.estimated_travel:
+        print(f"  추정치 대체: {ex.station} / {ex.participant} ← {ex.reason}")
     print(f"연령대 선호도: source={meta.age_preference.source} (임의값 {meta.age_preference.is_assumed})")
 
     for r in response.regions:

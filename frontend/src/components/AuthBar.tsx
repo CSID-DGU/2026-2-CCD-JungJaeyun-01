@@ -10,7 +10,8 @@ export default function AuthBar({ nickname, onLogout }: Props) {
       <span className="auth-brand">모임 장소 추천</span>
       {nickname ? (
         <span className="auth-user">
-          <strong>{nickname}</strong>님
+          <strong title={nickname}>{nickname}</strong>
+          <span>님</span>
           <button type="button" className="btn ghost small" onClick={onLogout}>로그아웃</button>
         </span>
       ) : (

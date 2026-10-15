@@ -1573,3 +1573,28 @@ a.btn { display: inline-block; text-decoration: none; }
 .tl-live-row b { color: #137333; margin-right: 4px; }
 .tl-live small { color: var(--muted); font-size: 11px; }
 .tl-live.none, .tl-live.loading { color: var(--muted); font-size: 12px; }
+
+/* ---------- 버튼 줄바꿈 방지 / 좁은 화면 ---------- */
+.btn,
+.landing-browse,
+.route-cta,
+.tl-toggle {
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: max-content;
+}
+.btn.small { height: 30px; }
+.live-bar { flex-wrap: wrap; }
+.live-hint { flex: 1 1 100%; } /* 한 줄에 안 들어가면 설명이 버튼 아래로 내려간다 */
+.live-bar .btn + .live-hint { min-width: 0; }
+.auth-bar { min-width: 0; }
+.auth-brand { white-space: nowrap; flex-shrink: 0; }
+.auth-user { min-width: 0; }
+.auth-user strong {
+  min-width: 0;
+  max-width: 9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-user > span, .auth-user { white-space: nowrap; }

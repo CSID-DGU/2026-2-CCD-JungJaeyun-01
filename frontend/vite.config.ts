@@ -13,6 +13,8 @@ export default defineConfig({
     proxy: {
       // /api/* 는 경로를 바꾸지 않고 그대로 백엔드로 전달한다.
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      // 카카오 로그인 리다이렉트도 5173으로 받아 세션 쿠키가 프론트와 같은 출처에 저장되게 한다.
+      '/auth': { target: 'http://localhost:8000', changeOrigin: false },
     },
   },
 })

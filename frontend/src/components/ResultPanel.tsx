@@ -2,9 +2,11 @@ import { PARTICIPANT_COLORS, PURPOSE_OPTIONS } from '../constants'
 import type { RouteSelection, SegmentFocus } from '../map/types'
 import { routeKey, type RouteEntries, type RouteEntry } from '../routes'
 import type { ParticipantTravel, Place, RecommendResponse, Region, Route } from '../types'
+import { kakaoPlaceUrl } from '../links'
 import { legColor } from '../map/geometry'
 import { lineLabel } from '../routeFormat'
 import RouteTimeline, { LineBadge, type TimelinePlay } from './RouteTimeline'
+import ShareBar from './ShareBar'
 
 interface Props {
   data: RecommendResponse
@@ -24,6 +26,8 @@ interface Props {
   /** "실제 경로 불러오기" 버튼 */
   onLoadRoute: (participant: number) => void
   onBack: () => void
+  /** 공유 메시지 본문·다시 보기 주소·로그인 여부 */
+  share: { text: string; url: string; loggedIn: boolean }
 }
 
 const fmt = (n: number) => Math.round(n).toString()
@@ -276,11 +280,9 @@ function PlaceCard({ place, selected, onSelect }: { place: Place; selected: bool
           <small>PlaceScore</small>
         </span>
       </button>
-      {/^https?:\/\//.test(place.url) && (
-        <a className="place-link" href={place.url} target="_blank" rel="noopener noreferrer">
-          카카오맵에서 보기 ↗
-        </a>
-      )}
+      <a className="place-link" href={kakaoPlaceUrl(place)} target="_blank" rel="noopener">
+        카카오맵에서 보기 ↗
+      </a>
     </li>
   )
 }
@@ -300,6 +302,7 @@ export default function ResultPanel({
   onFocusSegment,
   onLoadRoute,
   onBack,
+  share,
 }: Props) {
   const region = data.regions[selectedRegion]
   const maxMinutes = Math.max(...data.regions.flatMap((r) => r.participants.map((p) => p.minutes)))
@@ -326,6 +329,8 @@ export default function ResultPanel({
           {purposeLabel} · {region.participants.length}명 · 대중교통
         </span>
       </header>
+
+      <ShareBar text={share.text} url={share.url} loggedIn={share.loggedIn} />
 
       <div className="tabs" role="tablist" aria-label="추천 지역">
         {data.regions.map((r, i) => (

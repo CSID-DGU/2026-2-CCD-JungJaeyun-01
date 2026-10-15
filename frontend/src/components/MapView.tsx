@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { kakaoPlaceUrl } from '../links'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { diagnoseKakaoMap } from '../api'
 import { loadKakaoMaps } from '../kakaoLoader'
@@ -276,9 +277,7 @@ export default function MapView(props: Props) {
         place.rating != null
           ? `★ ${place.rating.toFixed(1)} (리뷰 ${place.review_count?.toLocaleString()}개)`
           : '평점 정보 없음'
-      const link = /^https?:\/\//.test(place.url)
-        ? `<a href="${esc(place.url)}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>`
-        : ''
+      const link = `<a href="${esc(kakaoPlaceUrl(place))}" target="_blank" rel="noopener">카카오맵에서 보기</a>`
       infoWindow.current = new kakao.maps.InfoWindow({
         position: new kakao.maps.LatLng(place.lat, place.lng),
         removable: true,

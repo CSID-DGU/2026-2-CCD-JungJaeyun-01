@@ -68,3 +68,26 @@ export interface UsageInfo {
 export function fetchUsage(): Promise<UsageInfo> {
   return request('/api/dev/usage')
 }
+
+export interface AuthState {
+  loggedIn: boolean
+  nickname: string | null
+}
+
+/** 로그인 상태. 토큰은 받지 않는다 (httpOnly 세션 쿠키만 오간다). */
+export function fetchMe(): Promise<AuthState> {
+  return request('/auth/me')
+}
+
+export function logout(): Promise<AuthState> {
+  return request('/auth/logout', { method: 'POST' })
+}
+
+/** 나에게 보내기 (로그인 필요) */
+export function sendMemo(text: string, url: string): Promise<{ sent: boolean }> {
+  return request('/api/share/memo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, url }),
+  })
+}

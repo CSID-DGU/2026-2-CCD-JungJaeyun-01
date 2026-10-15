@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchRoute, recommend } from './api'
+import { fetchMe, fetchRoute, logout as apiLogout, recommend } from './api'
+import AuthBar from './components/AuthBar'
+import Landing from './components/Landing'
 import DevUsage from './components/DevUsage'
 import InputForm from './components/InputForm'
 import MapView, { type OriginMarker } from './components/MapView'
@@ -9,6 +11,7 @@ import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, PARTICIPANT_COLORS } from './consta
 import type { MotionKind, MotionRequest, RouteSelection, SegmentFocus, ViewMode } from './map/types'
 import { defaultMeetingTime, isMeetingFarEnough, toMeetingIso } from './meeting'
 import { routeKey, type RouteEntries, type RouteEntry } from './routes'
+import { buildShareText, buildShareUrl, parseShareParam, SHARE_PARAM, type SharedInput } from './shareLink'
 import type { Purpose, RecommendResponse } from './types'
 import { toRequest, validateParticipants, type FieldErrors, type FormParticipant } from './validate'
 
@@ -38,6 +41,12 @@ function App() {
   const [routes, setRoutes] = useState<RouteEntries>({})
   const [plays, setPlays] = useState<Record<string, TimelinePlay>>({})
   const [usageTick, setUsageTick] = useState(0)
+  // 로그인 상태와 첫 화면. 비로그인도 추천 기능은 전부 쓸 수 있다.
+  const [auth, setAuth] = useState<{ loaded: boolean; nickname: string | null }>({ loaded: false, nickname: null })
+  const [stage, setStage] = useState<'landing' | 'app'>('landing')
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState<SharedInput | null>(null) // 결과를 만든 입력값 (공유 주소용)
+  const [notice, setNotice] = useState<string | null>(null)
 
   // 콜백(지도에 넘기는 안정적인 함수)이 항상 최신 값을 보도록 ref에 둔다.
   const latest = useRef({ participants, data, routeSelection, selectedRegion })
@@ -225,6 +234,11 @@ function App() {
     )
   }
 
+  async function logout() {
+    await apiLogout().catch(() => undefined)
+    setAuth({ loaded: true, nickname: null })
+  }
+
   function removeParticipant(key: number) {
     setParticipants((list) => (list.length <= MIN_PARTICIPANTS ? list : list.filter((p) => p.key !== key)))
     setErrors({})
@@ -244,9 +258,15 @@ function App() {
       return
     }
     setSubmitError(null)
+    await search(participants, purpose, meetingTime)
+  }
+
+  /** 검증을 통과한 입력으로 추천을 받아 결과 화면을 만든다 (직접 입력과 공유 링크가 함께 쓴다). */
+  async function search(input: FormParticipant[], purposeValue: Purpose, meeting: string) {
     setLoading(true)
     try {
-      const result = await recommend(toRequest(participants, purpose, toMeetingIso(meetingTime)))
+      const result = await recommend(toRequest(input, purposeValue, toMeetingIso(meeting)))
+      setSubmitted({ participants: input, purpose: purposeValue, meetingTime: meeting })
       resetRoutes() // 참여자·지역·약속 시간이 바뀌었을 수 있으니 이전 경로는 버린다
       setData(result)
       setSelectedRegion(0)
@@ -267,6 +287,43 @@ function App() {
       setLoading(false)
     }
   }
+
+  // 첫 로드: 로그인 상태 확인 + 공유 링크(?s=)로 들어왔으면 같은 입력으로 결과를 다시 보여준다.
+  const booted = useRef(false)
+  useEffect(() => {
+    if (booted.current) return
+    booted.current = true
+    const params = new URLSearchParams(window.location.search)
+    const shared = parseShareParam(params.get(SHARE_PARAM))
+    const err = params.get('login_error')
+    if (params.has('login') || err || params.has(SHARE_PARAM)) window.history.replaceState(null, '', window.location.pathname)
+    if (err) setLoginError(err === 'denied' ? '카카오 로그인을 취소했어요.' : '카카오 로그인에 실패했어요. 잠시 후 다시 시도해 주세요.')
+    fetchMe()
+      .then((me) => {
+        setAuth({ loaded: true, nickname: me.loggedIn ? me.nickname : null })
+        if (me.loggedIn) setStage('app')
+      })
+      .catch(() => setAuth({ loaded: true, nickname: null }))
+    if (shared) {
+      setStage('app')
+      setPurpose(shared.purpose)
+      setParticipants(shared.participants)
+      nextKey.current = shared.participants.length + 1
+      const stillFuture = isMeetingFarEnough(shared.meetingTime)
+      if (!stillFuture) setNotice('공유된 약속 시간이 지나서 기본 약속 시간(다음 토요일 18시)으로 다시 계산했어요.')
+      const meeting = stillFuture ? shared.meetingTime : defaultMeetingTime()
+      setMeetingTime(meeting)
+      void search(shared.participants, shared.purpose, meeting)
+    } else if (err) {
+      setStage('landing')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const share = useMemo(
+    () => (data && submitted ? { text: buildShareText(data), url: buildShareUrl(submitted), loggedIn: auth.nickname !== null } : null),
+    [data, submitted, auth.nickname],
+  )
 
   return (
     <div className="app">
@@ -290,7 +347,13 @@ function App() {
       </section>
 
       <aside className="panel" ref={panelRef}>
-        {data ? (
+        {stage === 'landing' ? (
+          <Landing onBrowse={() => setStage('app')} error={loginError} />
+        ) : (
+          <>
+            <AuthBar nickname={auth.nickname} onLogout={logout} />
+            {notice && <p className="route-hint notice">{notice}</p>}
+        {data && share ? (
           <ResultPanel
             data={data}
             selectedRegion={selectedRegion}
@@ -305,6 +368,7 @@ function App() {
             onSelectRoute={selectRoute}
             onFocusSegment={focusSegment}
             onLoadRoute={loadRoute}
+            share={share}
             onBack={() => {
               selectionToken.current++
               setData(null)
@@ -334,6 +398,8 @@ function App() {
             }}
             onSubmit={submit}
           />
+        )}
+          </>
         )}
       </aside>
 

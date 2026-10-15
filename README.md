@@ -44,6 +44,9 @@ cp .env.example .env
 | `KAKAO_REST_API_KEY` | 장소 검색, 출발지 자동완성 (백엔드 전용) | [Kakao Developers](https://developers.kakao.com) → 내 애플리케이션 → 앱 키 → **REST API 키** |
 | `VITE_KAKAO_JS_KEY` | 지도 표시 (프론트에서 쓰는 유일한 키) | 같은 화면의 **JavaScript 키** |
 | `GOOGLE_ROUTES_KEY` | 상위 3곳의 실제 대중교통 시간·상세 경로 (백엔드 전용) | [Google Cloud Console](https://console.cloud.google.com) → **Routes API** 사용 설정 → 사용자 인증 정보 → API 키 (결제 계정 필요) |
+| `KAKAO_CLIENT_SECRET` | (선택) 카카오 로그인 Client Secret. 콘솔에서 **사용함**으로 켰다면 필수 (백엔드 전용) | 앱 → 제품 설정 → 카카오 로그인 → **보안** |
+| `FRONTEND_URL` | 프론트 주소 (로그인 후 돌아갈 곳, 공유 링크 허용 주소). 기본 `http://localhost:5173` | - |
+| `KAKAO_REDIRECT_URI` | 카카오 로그인 Redirect URI. 기본 `http://localhost:5173/auth/kakao/callback` | 아래 "카카오 로그인·공유 설정" |
 | `ROUTE_PROVIDER` | 경로 API 종류: `google`(기본) \| `odsay`(기본 비활성화) | - |
 | `ROUTE_MODE` | Google 호출 방식: `live`(기본) \| `record` \| `replay`(테스트용) — 아래 "경로 API 호출 구조" 참고 | - |
 | `ODSAY_API_KEY` | `ROUTE_PROVIDER=odsay`일 때만 사용 | [ODsay LAB](https://lab.odsay.com) → 애플리케이션 등록 → API 키 |
@@ -63,6 +66,21 @@ cp .env.example .env
 - `USE_MOCK=true`여도 출발지 자동완성(`GET /api/search/places`)은 항상 실제 카카오 API를 사용하므로 `KAKAO_REST_API_KEY`가 필요합니다.
 - Google Routes 키는 프론트에 노출하지 않습니다. 키 제한을 쓴다면 API 제한을 Routes API로 두고, IP 제한을 쓸 때는 서버 IP를 등록하세요.
 - Google Maps Platform 약관은 응답 저장·캐시에 제한을 둘 수 있어요. 7일 캐시와 `backend/fixtures/google/` 저장본은 개발·발표용으로 쓰고, 공개 배포 전에 약관을 확인하세요.
+
+## 카카오 로그인·공유 설정 (Kakao Developers)
+
+로그인 없이도 추천은 전부 쓸 수 있고, 로그인하면 결과를 카카오톡 "나에게 보내기"로 받을 수 있습니다. 카카오톡 공유 창(`카카오톡으로 공유`)은 로그인 여부와 관계없이 동작합니다.
+
+1. [Kakao Developers](https://developers.kakao.com) → 내 애플리케이션 → 앱 선택 → **앱 키**에서 REST API 키(`KAKAO_REST_API_KEY`), JavaScript 키(`VITE_KAKAO_JS_KEY`)를 `.env`에 넣습니다.
+2. **플랫폼 → Web**에 사이트 도메인 `http://localhost:5173`을 등록합니다 (지도·카카오톡 공유 SDK용).
+3. **제품 설정 → 카카오 로그인**: 활성화 설정을 **ON**으로 하고, **Redirect URI**에 `http://localhost:5173/auth/kakao/callback`을 등록합니다 (`.env`의 `KAKAO_REDIRECT_URI`와 글자까지 같아야 합니다).
+4. **카카오 로그인 → 보안**에서 Client Secret을 **사용함**으로 켰다면 그 값을 `.env`의 `KAKAO_CLIENT_SECRET`에 넣습니다 (끄면 비워 둡니다).
+5. **동의항목**: `닉네임`(profile_nickname)과 `카카오톡 메시지 전송`(talk_message)을 설정합니다. talk_message는 "선택 동의"로 설정할 수 있습니다.
+6. 로그인 후에도 "나에게 보내기"가 권한 오류로 실패하면, 로그아웃 후 다시 로그인해 동의 화면에서 메시지 전송에 동의해 주세요.
+
+동작 방식: `GET /auth/kakao/login` → 카카오 인가 페이지 → `GET /auth/kakao/callback`에서 백엔드가 토큰을 교환합니다. 토큰은 백엔드 메모리 세션에만 있고, 브라우저에는 httpOnly 쿠키(`mr_session`)만 저장됩니다 (서버를 다시 켜면 로그아웃됩니다). 개발 서버는 `/auth/*`도 백엔드로 프록시해서 쿠키가 `localhost:5173`에 저장됩니다.
+
+결과 다시 보기 링크(`/?s=...`)에는 참여자 이름·출발지 좌표·연령대·목적·약속 시간이 담기고, 접속하면 같은 입력으로 결과를 다시 계산합니다. 약속 시간이 이미 지났다면 기본값(다음 토요일 18시)으로 계산하고 안내를 보여줍니다.
 
 ## 경로 API 호출 구조 (2단계)
 
@@ -143,4 +161,6 @@ python scripts/demo_recommend.py            # 홍대입구·잠실·노원 추�
 - `GET /api/dev/usage` — 오늘 경로 API 호출 수 (개발용 표시)
 - `GET /api/search/places?query=` — 출발지 자동완성 (카카오 키워드 검색 프록시)
 - `GET /api/diagnostics/kakao-map?origin=` — 지도 SDK 로드 실패 원인 진단 (화면의 안내 문구용)
+- `GET /auth/kakao/login`, `GET /auth/kakao/callback`, `GET /auth/me`, `POST /auth/logout` — 카카오 로그인 (인가 코드 방식, 백엔드 세션)
+- `POST /api/share/memo` — 나에게 보내기 (로그인 필요, `{text, url}`)
 - `GET /health`

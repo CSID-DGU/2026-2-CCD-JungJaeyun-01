@@ -136,8 +136,8 @@
 
 /* ---------------- 지도 마커: 색 아바타 핀 / 순위 숫자 핀 / 카테고리 아이콘 핀 ---------------- */
 .pin.pin-origin, .pin.pin-region, .pin.pin-region.active, .pin.pin-place, .pin.pin-place.active {
-  width: var(--d);
-  height: calc(var(--d) + 9px);
+  width: var(--pd);
+  height: calc(var(--pd) + 9px);
   border: 0;
   border-radius: 0;
   background: none;
@@ -145,17 +145,17 @@
   color: #fff;
   display: block;
 }
-.pin-origin { --d: 36px; --pin-color: var(--brand); }
-.pin-region { --d: 38px; --pin-color: var(--gray-900); }
+.pin-origin { --pd: 36px; --pin-color: var(--brand); }
+.pin-region { --pd: 38px; --pin-color: var(--gray-900); }
 .pin-region.active { --pin-color: var(--brand); }
-.pin-place { --d: 32px; --pin-color: var(--place); }
+.pin-place { --pd: 32px; --pin-color: var(--place); }
 .pin .pin-body {
   position: absolute;
   left: 0;
   top: 0;
   z-index: 1;
   width: 100%;
-  height: var(--d);
+  height: var(--pd);
   display: grid;
   place-items: center;
   border: 3px solid #fff;
@@ -163,7 +163,7 @@
   background: var(--pin-color);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
   font-weight: 800;
-  font-size: calc(var(--d) * 0.42);
+  font-size: calc(var(--pd) * 0.42);
   transform-origin: 50% 100%;
   transition: transform 0.2s var(--ease-pop);
 }
@@ -171,7 +171,7 @@
   content: '';
   position: absolute;
   left: 50%;
-  top: calc(var(--d) - 8px);
+  top: calc(var(--pd) - 8px);
   width: 14px;
   height: 14px;
   background: var(--pin-color);
@@ -208,7 +208,7 @@
 @container (min-width: 34px) and (max-width: 77.9px) { .seg-part .seg-short { display: inline; } }
 
 /* ---------------- 지도 마커 구별: 출발지=이름표 달린 둥근 색 핀, 추천 지역=순위 숫자 핀, 추천 장소=흰 네모 아이콘 핀 ---------------- */
-.pin-origin { --d: 40px; }
+.pin-origin { --pd: 40px; }
 .pin-origin .pin-body { border-width: 4px; font-size: 17px; }
 .pin-label {
   position: absolute;
@@ -225,10 +225,10 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   border: 2px solid var(--pin-color);
 }
-.pin-region { --d: 40px; }
-.pin.pin-place { --d: 30px; }
+.pin-region { --pd: 40px; }
+.pin.pin-place { --pd: 30px; }
 .pin.pin-place .pin-body { border-radius: 10px; background: #fff; color: var(--pin-color); border: 3px solid var(--pin-color); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28); }
-.pin.pin-place::before { width: 10px; height: 10px; top: calc(var(--d) - 6px); border-radius: 2px; }
+.pin.pin-place::before { width: 10px; height: 10px; top: calc(var(--pd) - 6px); border-radius: 2px; }
 .pin-rank {
   position: absolute;
   top: -7px;

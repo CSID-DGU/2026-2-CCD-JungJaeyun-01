@@ -96,7 +96,6 @@ function StopsDetail({ seg }: { seg: RouteSegment }) {
             <li key={name}>{name}</li>
           ))}
         </ol>
-        <small>노선도 기준 경유역 (Google은 경유 정거장 이름을 주지 않아요)</small>
       </div>
     )
   }

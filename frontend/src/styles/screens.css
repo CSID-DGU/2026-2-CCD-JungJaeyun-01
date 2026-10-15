@@ -200,3 +200,9 @@
 .autocomplete input.selected { background: var(--accent-soft); border-color: var(--accent); color: var(--gray-900); }
 .autocomplete input.selected:focus-visible { outline-color: rgba(59, 108, 255, 0.28); }
 .state-message { scroll-margin-bottom: 110px; }
+
+/* 막대 안 글자: 구간 폭에 맞춰 "노선 + 시간" → "시간만" → 숨김 (잘리지 않게 컨테이너 폭으로 고른다) */
+.seg-part { container-type: inline-size; min-width: 0; overflow: hidden; }
+.seg-part .seg-full, .seg-part .seg-short { display: none; white-space: nowrap; }
+@container (min-width: 78px) { .seg-part .seg-full { display: inline; } }
+@container (min-width: 34px) and (max-width: 77.9px) { .seg-part .seg-short { display: inline; } }

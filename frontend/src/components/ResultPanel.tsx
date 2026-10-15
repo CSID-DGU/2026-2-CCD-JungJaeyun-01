@@ -64,20 +64,18 @@ function EstimateFlow({ route, color }: { route: Route; color: string }) {
 /** 네이버·구글 지도처럼 구간 시간 비율로 쪼갠 막대. 도보=회색, 지하철=호선 색, 버스=종류별 색. 추정은 점선 + "추정". */
 function SegmentBar({ route, widthPct }: { route: Route; widthPct: number }) {
   const estimated = route.source === 'estimate'
-  const total = route.segments.reduce((a, s) => a + Math.max(s.minutes, 0.5), 0)
   return (
     <span className={`seg-bar${estimated ? ' estimated' : ''}`} style={{ width: `${widthPct}%` }} role="img"
       aria-label={route.segments.map((s) => `${s.mode === 'WALK' ? '도보' : lineLabel(s)} ${Math.max(1, Math.round(s.minutes))}분`).join(', ')}>
       {route.segments.map((s, i) => {
-        const share = Math.max(s.minutes, 0.5) / total
         const mins = `${Math.max(1, Math.round(s.minutes))}분`
         const name = s.mode === 'WALK' ? '도보' : lineLabel(s)
-        const label = share >= 0.2 ? `${name} ${mins}` : share >= 0.09 ? mins : ''
         const walk = s.mode === 'WALK'
         return (
           <span key={i} className={`seg-part ${walk ? 'walk' : ''}`} title={`${name} ${mins}`}
             style={{ flexGrow: Math.max(s.minutes, 0.5), background: walk ? 'var(--walk-gray)' : legColor(s, '#888'), color: walk ? '#333' : (s.lineTextColor ?? '#fff') }}>
-            {label}
+            <span className="seg-full">{name} {mins}</span>
+            <span className="seg-short">{mins}</span>
           </span>
         )
       })}

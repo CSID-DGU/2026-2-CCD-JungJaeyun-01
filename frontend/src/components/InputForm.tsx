@@ -1,3 +1,4 @@
+import { BRAND } from '../brand'
 import {
   AGE_OPTIONS,
   MAX_PARTICIPANTS,
@@ -41,8 +42,8 @@ export default function InputForm(props: Props) {
       noValidate
     >
       <header className="panel-header">
-        <h1>모임 장소 추천</h1>
-        <p>모두의 이동시간이 공평한 지역과, 그 안의 장소를 찾아드려요.</p>
+        <h1>{BRAND.slogan}</h1>
+        <p>{BRAND.tagline}</p>
       </header>
 
       <section aria-label="참여자">

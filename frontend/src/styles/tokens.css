@@ -1,0 +1,69 @@
+/* ============================================================
+   MEET PICK 디자인 시스템: 색, 글꼴, 둥글기, 그림자, 간격은 모두 여기서만 정한다.
+   메인 색 1개(코랄) + 보조 색 1개(블루) + 회색 계열.
+   ============================================================ */
+:root {
+  /* 메인: 코랄 */
+  --brand: #ff5a4e;
+  --brand-dark: #e8443a;
+  --brand-soft: #ffeeeb;
+  --brand-ring: rgba(255, 90, 78, 0.28);
+  /* 보조: 블루 */
+  --accent: #3b6cff;
+  --accent-dark: #2a55e0;
+  --accent-soft: #eaf0ff;
+  /* 회색 계열 */
+  --gray-50: #f8f9fb;
+  --gray-100: #f1f3f6;
+  --gray-200: #e6e9ee;
+  --gray-300: #d3d8e0;
+  --gray-400: #a9b0bc;
+  --gray-500: #7b8494;
+  --gray-700: #3d4452;
+  --gray-900: #1c212b;
+  /* 상태 */
+  --danger: #d92d20;
+  --danger-soft: #fef3f2;
+  --ok: #137333;
+  --kakao: #fee500;
+  --kakao-label: rgba(0, 0, 0, 0.85);
+
+  /* 기존 화면이 쓰는 이름들을 위 값에 연결한다 */
+  --bg: var(--gray-50);
+  --panel: #ffffff;
+  --text: var(--gray-900);
+  --muted: var(--gray-500);
+  --line: var(--gray-200);
+  --primary: var(--brand);
+  --primary-dark: var(--brand-dark);
+  --primary-soft: var(--brand-soft);
+  --navy: var(--gray-900);
+  --place: #f59e0b;
+  --walk-gray: #c9ced6;
+
+  /* 모양 */
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(28, 33, 43, 0.06), 0 2px 8px rgba(28, 33, 43, 0.05);
+  --shadow-md: 0 4px 16px rgba(28, 33, 43, 0.1);
+  --shadow-brand: 0 6px 16px rgba(255, 90, 78, 0.35);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --panel-width: 440px;
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 글꼴: Pretendard (index.html의 CDN 링크). 제목은 굵고 크게 */
+  --font: 'Pretendard Variable', Pretendard, 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-title: 28px;
+  --fs-h2: 20px;
+  --fw-title: 800;
+
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg);
+}

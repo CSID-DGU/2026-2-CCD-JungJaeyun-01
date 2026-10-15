@@ -1,3 +1,5 @@
+import Logo from './Logo'
+
 interface Props {
   nickname: string | null
   onLogout: () => void
@@ -7,7 +9,7 @@ interface Props {
 export default function AuthBar({ nickname, onLogout }: Props) {
   return (
     <div className="auth-bar">
-      <span className="auth-brand">모임 장소 추천</span>
+      <span className="auth-brand"><Logo size="sm" showKo={false} /></span>
       {nickname ? (
         <span className="auth-user">
           <strong title={nickname}>{nickname}</strong>

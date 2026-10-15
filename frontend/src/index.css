@@ -1,23 +1,4 @@
-:root {
-  --bg: #f4f5f7;
-  --walk-gray: #c9ced6;
-  --panel: #ffffff;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --line: #e5e7eb;
-  --primary: #2f6fed;
-  --primary-dark: #1f56c4;
-  --primary-soft: #eaf1ff;
-  --danger: #d92d20;
-  --danger-soft: #fef3f2;
-  --navy: #1e293b;
-  --place: #f59e0b;
-  --radius: 10px;
-  --panel-width: 440px;
-  font-family: Pretendard, 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: var(--text);
-  background: var(--bg);
-}
+/* 색·글꼴·둥글기 같은 디자인 값은 styles/tokens.css에 있다. */
 
 * {
   box-sizing: border-box;
@@ -1513,27 +1494,7 @@ input.selected {
 .tl-node:has(.tl-transfer) .tl-body > strong { font-size: 1.05em; }
 .tl-node:has(.tl-transfer) .tl-dot { border-width: 4px; }
 
-/* ---------- 첫 화면 / 로그인 헤더 / 공유 ---------- */
-.landing {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 36px 4px;
-}
-.landing h1 { margin: 0; font-size: 24px; }
-.landing-sub { margin: 0; color: var(--muted); line-height: 1.5; }
-.landing-login { text-align: center; padding: 14px; font-size: 16px; text-decoration: none; }
-.landing-browse {
-  align-self: center;
-  background: none;
-  border: 0;
-  color: var(--muted);
-  text-decoration: underline;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 6px;
-}
-.landing-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+/* ---------- 로그인 헤더 / 공유 (첫 화면 스타일은 styles/landing.css) ---------- */
 .btn.kakao {
   background: #fee500;
   color: #191919;

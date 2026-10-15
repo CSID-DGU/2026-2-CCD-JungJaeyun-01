@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchMe, fetchRoute, logout as apiLogout, recommend } from './api'
 import AuthBar from './components/AuthBar'
+import Intro from './components/Intro'
 import Landing from './components/Landing'
+import { shouldPlayIntro } from './introState'
 import DevUsage from './components/DevUsage'
 import InputForm from './components/InputForm'
 import MapView, { type OriginMarker } from './components/MapView'
@@ -47,6 +49,7 @@ function App() {
   const [loginError, setLoginError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState<SharedInput | null>(null) // 결과를 만든 입력값 (공유 주소용)
   const [notice, setNotice] = useState<string | null>(null)
+  const [introPlaying, setIntroPlaying] = useState(shouldPlayIntro) // 세션당 1번, reduced-motion이면 생략
   const [liveMode, setLiveMode] = useState(false) // "지금 출발": 실시간 도착 정보 수동 켜기
 
   // 콜백(지도에 넘기는 안정적인 함수)이 항상 최신 값을 보도록 ref에 둔다.
@@ -406,6 +409,8 @@ function App() {
           </>
         )}
       </aside>
+
+      {introPlaying && <Intro onDone={() => setIntroPlaying(false)} />}
 
       <DevUsage refreshKey={usageTick} accuracy={data?.meta.estimate_accuracy ?? null} />
     </div>

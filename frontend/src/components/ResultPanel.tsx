@@ -26,6 +26,9 @@ interface Props {
   /** "실제 경로 불러오기" 버튼 */
   onLoadRoute: (participant: number) => void
   onBack: () => void
+  /** "지금 출발"로 켠 실시간 모드 */
+  liveMode: boolean
+  onToggleLive: () => void
   /** 공유 메시지 본문·다시 보기 주소·로그인 여부 */
   share: { text: string; url: string; loggedIn: boolean }
 }
@@ -92,10 +95,11 @@ interface DetailProps {
   segmentFocus: SegmentFocus | null
   onFocusSegment: (participant: number, segment: number | null) => void
   onLoadRoute: (participant: number) => void
+  liveMode: boolean
 }
 
 /** 참여자 행을 펼쳤을 때의 내용: 안내(추정) / 불러오는 중 / 오류 / 타임라인 */
-function RouteDetail({ entry, travel, index, color, origin, destinationName, meetingTime, play, segmentFocus, onFocusSegment, onLoadRoute }: DetailProps) {
+function RouteDetail({ entry, travel, index, color, origin, destinationName, meetingTime, play, segmentFocus, onFocusSegment, onLoadRoute, liveMode }: DetailProps) {
   const loadButton = (label: string) => (
     <button type="button" className="btn ghost load-route" onClick={() => onLoadRoute(index)}>{label}</button>
   )
@@ -149,6 +153,7 @@ function RouteDetail({ entry, travel, index, color, origin, destinationName, mee
         focusedSegment={segmentFocus?.participant === index ? segmentFocus.segment : null}
         onFocusSegment={(segment) => onFocusSegment(index, segment)}
         play={play ?? null}
+        liveManual={liveMode}
       />
     </div>
   )
@@ -166,6 +171,7 @@ function TravelBars({
   onSelectRoute,
   onFocusSegment,
   onLoadRoute,
+  liveMode,
 }: {
   region: Region
   maxMinutes: number
@@ -178,6 +184,7 @@ function TravelBars({
   onSelectRoute: (selection: RouteSelection) => void
   onFocusSegment: (participant: number, segment: number | null) => void
   onLoadRoute: (participant: number) => void
+  liveMode: boolean
 }) {
   return (
     <>
@@ -243,6 +250,7 @@ function TravelBars({
                     segmentFocus={segmentFocus}
                     onFocusSegment={onFocusSegment}
                     onLoadRoute={onLoadRoute}
+                    liveMode={liveMode}
                   />
                 </div>
               </div>
@@ -303,6 +311,8 @@ export default function ResultPanel({
   onLoadRoute,
   onBack,
   share,
+  liveMode,
+  onToggleLive,
 }: Props) {
   const region = data.regions[selectedRegion]
   const maxMinutes = Math.max(...data.regions.flatMap((r) => r.participants.map((p) => p.minutes)))
@@ -329,6 +339,17 @@ export default function ResultPanel({
           {purposeLabel} · {region.participants.length}명 · 대중교통
         </span>
       </header>
+
+      <div className="live-bar">
+        <button type="button" className={`btn ${liveMode ? 'live-on' : 'ghost'}`} aria-pressed={liveMode} onClick={onToggleLive}>
+          {liveMode ? '● 실시간 끄기' : '지금 출발'}
+        </button>
+        <span className="live-hint">
+          {liveMode
+            ? '지금 기준 다음 열차·버스를 30초마다 갱신해요 (경로를 펼치면 승차역 옆에 표시)'
+            : '누르면 승차역의 실시간 도착 정보를 보여줘요. 출발 30분 전부터는 자동으로 켜져요.'}
+        </span>
+      </div>
 
       <ShareBar text={share.text} url={share.url} loggedIn={share.loggedIn} />
 
@@ -376,6 +397,7 @@ export default function ResultPanel({
           onSelectRoute={onSelectRoute}
           onFocusSegment={onFocusSegment}
           onLoadRoute={onLoadRoute}
+          liveMode={liveMode}
         />
 
         <dl className="metrics">

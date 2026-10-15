@@ -48,6 +48,14 @@ export interface RouteSegment {
   /** 경유 정거장 이름 (출발·도착 제외). Google은 주지 않아서 지하철만 노선도 데이터로 채운다. */
   intermediateStops: string[] | null
   intermediateStopsSource: 'subway-map' | null
+  lineKind?: string | null
+  /** 실시간 도착 정보를 붙일 때 쓰는 승·하차 정류장/노선/방면 참조 */
+  realtime?: {
+    boardStop: { name: string | null; lat: number | null; lng: number | null; id: string | null }
+    alightStop: { name: string | null; lat: number | null; lng: number | null; id: string | null }
+    line: { name: string | null; number: string | null; vehicleType: string | null }
+    headsign: string | null
+  } | null
 }
 
 export interface Route {

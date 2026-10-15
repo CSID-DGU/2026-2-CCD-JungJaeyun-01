@@ -47,6 +47,8 @@ cp .env.example .env
 | `KAKAO_CLIENT_SECRET` | (선택) 카카오 로그인 Client Secret. 콘솔에서 **사용함**으로 켰다면 필수 (백엔드 전용) | 앱 → 제품 설정 → 카카오 로그인 → **보안** |
 | `FRONTEND_URL` | 프론트 주소 (로그인 후 돌아갈 곳, 공유 링크 허용 주소). 기본 `http://localhost:5173` | - |
 | `KAKAO_REDIRECT_URI` | 카카오 로그인 Redirect URI. 기본 `http://localhost:5173/auth/kakao/callback` | 아래 "카카오 로그인·공유 설정" |
+| `SEOUL_SUBWAY_API_KEY` | (선택) 지하철 실시간 도착정보 (백엔드 전용) | [서울 열린데이터광장](https://data.seoul.go.kr) → "지하철 실시간 도착정보" → 인증키 신청 |
+| `SEOUL_BUS_API_KEY` | (선택) 버스 실시간 도착정보 (백엔드 전용) | [공공데이터포털](https://www.data.go.kr) → "서울특별시_정류소정보조회 서비스"·"버스도착정보조회 서비스" **활용신청** 후 일반 인증키. 서비스마다 신청이 따로이고 승인까지 시간이 걸릴 수 있어요 |
 | `ROUTE_PROVIDER` | 경로 API 종류: `google`(기본) \| `odsay`(기본 비활성화) | - |
 | `ROUTE_MODE` | Google 호출 방식: `live`(기본) \| `record` \| `replay`(테스트용) — 아래 "경로 API 호출 구조" 참고 | - |
 | `ODSAY_API_KEY` | `ROUTE_PROVIDER=odsay`일 때만 사용 | [ODsay LAB](https://lab.odsay.com) → 애플리케이션 등록 → API 키 |
@@ -81,6 +83,14 @@ cp .env.example .env
 동작 방식: `GET /auth/kakao/login` → 카카오 인가 페이지 → `GET /auth/kakao/callback`에서 백엔드가 토큰을 교환합니다. 토큰은 백엔드 메모리 세션에만 있고, 브라우저에는 httpOnly 쿠키(`mr_session`)만 저장됩니다 (서버를 다시 켜면 로그아웃됩니다). 개발 서버는 `/auth/*`도 백엔드로 프록시해서 쿠키가 `localhost:5173`에 저장됩니다.
 
 결과 다시 보기 링크(`/?s=...`)에는 참여자 이름·출발지 좌표·연령대·목적·약속 시간이 담기고, 접속하면 같은 입력으로 결과를 다시 계산합니다. 약속 시간이 이미 지났다면 기본값(다음 토요일 18시)으로 계산하고 안내를 보여줍니다.
+
+## 실시간 도착 정보
+
+- `GET /api/realtime?type=subway&station=&line=&headsign=&next=` — 역 이름 + 호선 + 방면(종착역 또는 다음 역)으로 거른 다음 열차 최대 2개. `type=bus&lat=&lng=&stop=&line=` — 승차 정류장 좌표 반경 120m 정류소 중 이름이 같은 곳을 찾고(정류소 조회) 그 정류소의 도착정보에서 노선 번호로 거릅니다. 같은 요청은 30초 캐시합니다.
+- 키가 없거나, 서울 밖이거나, API가 실패하면 오류가 아니라 `available: false`("실시간 정보 없음")로 조용히 처리합니다.
+- 표시 조건: 경로의 출발 시각 30분 전부터 자동으로 켜지고, 그 전에는 결과 화면의 **지금 출발** 버튼을 눌렀을 때만 켜집니다. 켜져 있는 동안 30초마다 갱신하고, 화면을 떠나거나(조건 다시 입력) 탭이 숨겨지면 멈춥니다.
+- 타임라인의 **첫 번째 승차역/정류장** 옆에 "첫 번째 3분 후 도착 · 2정거장 전 / 두 번째 …"로 표시합니다. 환승 뒤의 열차는 지금 도착 정보가 의미가 없어서 표시하지 않습니다.
+- 지하철 정거장 수는 API 메시지에 없으면 `data/subway/network.json` 노선도로 현재 위치에서 계산합니다.
 
 ## 경로 API 호출 구조 (2단계)
 
@@ -163,4 +173,5 @@ python scripts/demo_recommend.py            # 홍대입구·잠실·노원 추�
 - `GET /api/diagnostics/kakao-map?origin=` — 지도 SDK 로드 실패 원인 진단 (화면의 안내 문구용)
 - `GET /auth/kakao/login`, `GET /auth/kakao/callback`, `GET /auth/me`, `POST /auth/logout` — 카카오 로그인 (인가 코드 방식, 백엔드 세션)
 - `POST /api/share/memo` — 나에게 보내기 (로그인 필요, `{text, url}`)
+- `GET /api/realtime` — 실시간 도착 정보 (위 "실시간 도착 정보" 참고)
 - `GET /health`

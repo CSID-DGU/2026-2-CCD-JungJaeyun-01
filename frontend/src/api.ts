@@ -91,3 +91,38 @@ export function sendMemo(text: string, url: string): Promise<{ sent: boolean }> 
     body: JSON.stringify({ text, url }),
   })
 }
+
+export interface Arrival {
+  /** 도착까지 남은 시간(초). 모르면 null */
+  seconds: number | null
+  /** 몇 정거장 전. 모르면 null */
+  stopsAway: number | null
+  text: string
+  destination: string | null
+}
+
+export type RealtimeQuery =
+  | { type: 'subway'; station: string; line: string; headsign: string | null; next: string | null }
+  | { type: 'bus'; stop: string; line: string; lat: number; lng: number }
+
+export interface RealtimeResponse {
+  available: boolean
+  items: Arrival[]
+  /** epoch 초 */
+  updatedAt: number
+}
+
+/** 다음 열차/버스 도착 정보. 실패해도 오류가 아니라 available=false로 온다. */
+export function fetchRealtime(q: RealtimeQuery, signal?: AbortSignal): Promise<RealtimeResponse> {
+  const p = new URLSearchParams({ type: q.type, line: q.line })
+  if (q.type === 'subway') {
+    p.set('station', q.station)
+    if (q.headsign) p.set('headsign', q.headsign)
+    if (q.next) p.set('next', q.next)
+  } else {
+    p.set('stop', q.stop)
+    p.set('lat', String(q.lat))
+    p.set('lng', String(q.lng))
+  }
+  return request(`/api/realtime?${p}`, { signal })
+}

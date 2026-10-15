@@ -47,6 +47,7 @@ function App() {
   const [loginError, setLoginError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState<SharedInput | null>(null) // 결과를 만든 입력값 (공유 주소용)
   const [notice, setNotice] = useState<string | null>(null)
+  const [liveMode, setLiveMode] = useState(false) // "지금 출발": 실시간 도착 정보 수동 켜기
 
   // 콜백(지도에 넘기는 안정적인 함수)이 항상 최신 값을 보도록 ref에 둔다.
   const latest = useRef({ participants, data, routeSelection, selectedRegion })
@@ -369,7 +370,10 @@ function App() {
             onFocusSegment={focusSegment}
             onLoadRoute={loadRoute}
             share={share}
+            liveMode={liveMode}
+            onToggleLive={() => setLiveMode((v) => !v)}
             onBack={() => {
+              setLiveMode(false)
               selectionToken.current++
               setData(null)
               setSelectedPlaceId(null)

@@ -38,3 +38,8 @@ KAKAO_CLIENT_SECRET: str = os.getenv("KAKAO_CLIENT_SECRET", "")     # 선택: �
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 # 카카오 개발자 콘솔의 Redirect URI와 글자 하나까지 같아야 한다. 프론트 개발 서버의 /auth 프록시를 거친다.
 KAKAO_REDIRECT_URI: str = os.getenv("KAKAO_REDIRECT_URI", f"{FRONTEND_URL}/auth/kakao/callback")
+
+# 실시간 도착 정보 (백엔드 전용 키). 없으면 "실시간 정보 없음"으로 조용히 처리한다.
+SEOUL_SUBWAY_API_KEY: str = os.getenv("SEOUL_SUBWAY_API_KEY", "")   # 서울 열린데이터광장 지하철 실시간 도착정보
+SEOUL_BUS_API_KEY: str = os.getenv("SEOUL_BUS_API_KEY", "")         # 공공데이터포털 서울 버스 정류소·도착정보
+REALTIME_TTL_SECONDS: float = float(os.getenv("REALTIME_TTL_SECONDS", "30"))

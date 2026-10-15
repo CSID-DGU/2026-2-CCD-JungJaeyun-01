@@ -1,8 +1,9 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { legColor } from '../map/geometry'
 import { lineLabel } from '../routeFormat'
 import { fmtClock, fmtDay, minutesBetween } from '../meeting'
 import type { Route, RouteSegment } from '../types'
+import { formatArrival, realtimeQuery, REFRESH_MS, useArrivals } from '../useArrivals'
 
 export interface TimelinePlay {
   /** 바뀔 때마다 등장 모션을 처음부터 다시 재생한다 */
@@ -24,7 +25,12 @@ interface Props {
   onFocusSegment: (segment: number | null) => void
   /** null이면 아직 지도에서 경로 그리기가 시작되기 전이라 숨겨 둔다 */
   play: TimelinePlay | null
+  /** "지금 출발"로 직접 켠 실시간 모드 */
+  liveManual: boolean
 }
+
+/** 출발 시각 30분 전부터 자동으로 실시간 모드 */
+const AUTO_LIVE_BEFORE_MS = 30 * 60_000
 
 const TOTAL_ANIMATION_MS = 1000
 
@@ -42,7 +48,7 @@ export function LineBadge({ seg, fallbackColor }: { seg: RouteSegment; fallbackC
 }
 
 type Row =
-  | { kind: 'node'; id: string; time: string | null; title: string; sub?: string; color: string; end?: boolean; seg?: RouteSegment; transfer?: boolean }
+  | { kind: 'node'; id: string; time: string | null; title: string; sub?: string; color: string; end?: boolean; seg?: RouteSegment; transfer?: boolean; live?: boolean }
   | { kind: 'leg'; id: string; index: number; seg: RouteSegment }
 
 function buildRows(route: Route, color: string, originName: string, originAddress: string, destinationName: string): Row[] {
@@ -58,10 +64,13 @@ function buildRows(route: Route, color: string, originName: string, originAddres
         // 도보 없이 바로 타는 경우: 출발지가 곧 승차역이다.
         const start = rows[0] as Extract<Row, { kind: 'node' }>
         start.sub = `${originAddress || originName} · ${seg.from ?? ''} 승차`
+        start.seg = seg
+        start.live = true
       } else {
         rows.push({
           kind: 'node', id: `board-${i}`, time: seg.departureTime, title: seg.from ?? '승차역',
           sub: prev.mode === 'WALK' ? '승차' : '환승', color: legColor(seg, color), seg, transfer: prev.mode !== 'WALK',
+          live: !segs.slice(0, i).some((s) => s.mode !== 'WALK'), // 첫 번째 승차만 지금의 실시간이 의미 있다
         })
       }
     }
@@ -105,8 +114,32 @@ function StopsDetail({ seg }: { seg: RouteSegment }) {
   )
 }
 
+/** 승차역 옆의 "3분 후 도착 · 2정거장 전" (첫 번째·두 번째 열차/버스) */
+function LiveArrivals({ seg, active }: { seg: RouteSegment; active: boolean }) {
+  const state = useArrivals(realtimeQuery(seg), active)
+  if (!active) return null
+  if (state.loading) return <span className="tl-live loading">실시간 불러오는 중…</span>
+  if (state.unavailable || state.items.length === 0) return <span className="tl-live none">실시간 정보 없음</span>
+  return (
+    <span className="tl-live" aria-live="polite">
+      {state.items.map((a, i) => (
+        <span key={i} className="tl-live-row"><b>{i === 0 ? '첫 번째' : '두 번째'}</b> {formatArrival(a)}</span>
+      ))}
+      {state.updatedAt && <small>{fmtClock(new Date(state.updatedAt).toISOString())} 갱신 · {REFRESH_MS / 1000}초마다 자동</small>}
+    </span>
+  )
+}
+
 export default function RouteTimeline(props: Props) {
-  const { route, color, originName, originAddress, destinationName, meetingTime, focusedSegment, onFocusSegment, play } = props
+  const { route, color, originName, originAddress, destinationName, meetingTime, focusedSegment, onFocusSegment, play, liveManual } = props
+  // 출발 시각 30분 전이 되면 자동으로 실시간 모드로 바뀐다 (30초마다 시각을 다시 확인)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), REFRESH_MS)
+    return () => clearInterval(t)
+  }, [])
+  const autoLive = route.departureTime !== null && now >= new Date(route.departureTime).getTime() - AUTO_LIVE_BEFORE_MS
+  const live = liveManual || autoLive
   const [openStops, setOpenStops] = useState<Set<number>>(new Set())
   const rows = buildRows(route, color, originName, originAddress, destinationName)
   const step = TOTAL_ANIMATION_MS / rows.length
@@ -167,6 +200,7 @@ export default function RouteTimeline(props: Props) {
                     </span>
                   )}
                   {row.sub && !row.transfer && <small>{row.sub}</small>}
+                  {row.live && row.seg && <LiveArrivals seg={row.seg} active={live} />}
                 </div>
               </li>
             )

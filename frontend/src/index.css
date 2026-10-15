@@ -1564,3 +1564,12 @@ a.btn { display: inline-block; text-decoration: none; }
 .share-status.ok { color: #137333; }
 .share-status.error { color: var(--danger); }
 .share-status.login { color: var(--muted); }
+
+/* ---------- 실시간 도착 정보 ---------- */
+.live-bar { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; }
+.live-hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.btn.live-on { background: #137333; color: #fff; border: 1px solid #137333; border-radius: 8px; cursor: pointer; padding: 8px 14px; white-space: nowrap; }
+.tl-live { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; font-size: 13px; }
+.tl-live-row b { color: #137333; margin-right: 4px; }
+.tl-live small { color: var(--muted); font-size: 11px; }
+.tl-live.none, .tl-live.loading { color: var(--muted); font-size: 12px; }

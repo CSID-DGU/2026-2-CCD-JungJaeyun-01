@@ -1,0 +1,37 @@
+# 경로 표시 색상표 (타임라인 배지·구간 막대·지도 선이 모두 이 색을 쓴다).
+# 지하철은 호선 공식 색, 버스는 종류별 색, 도보는 회색. Google이 주는 색은 이 표에 없는 노선에만 쓴다.
+walk: "#B8BEC9"
+
+subway:            # 노선명(Google nameShort)에 이 키가 들어 있으면 적용 (긴 이름 먼저)
+  "수인분당선": {color: "#F5A200", text: "#000000"}
+  "신분당선":   {color: "#D4003B", text: "#FFFFFF"}
+  "경의중앙선": {color: "#77C4A3", text: "#000000"}
+  "공항철도":   {color: "#0090D2", text: "#FFFFFF"}
+  "우이신설선": {color: "#B0CE18", text: "#000000"}
+  "의정부경전철": {color: "#FDA600", text: "#000000"}
+  "용인에버라인": {color: "#44A41D", text: "#FFFFFF"}
+  "김포골드라인": {color: "#A17800", text: "#FFFFFF"}
+  "경춘선":     {color: "#0C8E72", text: "#FFFFFF"}
+  "신림선":     {color: "#6789CA", text: "#FFFFFF"}
+  "서해선":     {color: "#81A914", text: "#FFFFFF"}
+  "경강선":     {color: "#0054A6", text: "#FFFFFF"}
+  "GTX-A":      {color: "#9A6292", text: "#FFFFFF"}
+  "인천1호선":  {color: "#7CA8D5", text: "#000000"}
+  "인천2호선":  {color: "#ED8B00", text: "#FFFFFF"}
+  "1호선": {color: "#0052A4", text: "#FFFFFF"}
+  "2호선": {color: "#00A84D", text: "#FFFFFF"}
+  "3호선": {color: "#EF7C1C", text: "#FFFFFF"}
+  "4호선": {color: "#00A5DE", text: "#FFFFFF"}
+  "5호선": {color: "#996CAC", text: "#FFFFFF"}
+  "6호선": {color: "#CD7C2F", text: "#FFFFFF"}
+  "7호선": {color: "#747F00", text: "#FFFFFF"}
+  "8호선": {color: "#E6186C", text: "#FFFFFF"}
+  "9호선": {color: "#BDB092", text: "#000000"}
+
+bus:               # 서울 버스 번호 체계로 종류를 추정한다 (위에서부터 처음 맞는 규칙)
+  - {kind: "심야", pattern: "^N\\d+",       color: "#4F5B66", text: "#FFFFFF"}
+  - {kind: "광역", pattern: "^(M\\d+|9\\d{3})$", color: "#E60012", text: "#FFFFFF"}
+  - {kind: "간선", pattern: "^\\d{3}$",      color: "#3D5BAB", text: "#FFFFFF"}
+  - {kind: "지선", pattern: "^\\d{4}$",      color: "#5BB025", text: "#FFFFFF"}
+  - {kind: "순환", pattern: "^0\\d+$",       color: "#F2B70A", text: "#000000"}
+  - {kind: "마을", pattern: "[가-힣]",        color: "#53B332", text: "#FFFFFF"}

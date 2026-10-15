@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app import settings
 from app.config import PlaceConfig, RegionConfig, load_meeting_defaults, load_place_config, load_region_config
 from app.geo import Coord
+from app.line_colors import apply_line_colors
 from app.meeting import InvalidMeetingTime, resolve_meeting_time
 from app.place_recommend import recommend_with_places
 from app.providers.base import RouteProvider, RouteUnavailable
@@ -93,7 +94,7 @@ def post_route(
     origin = Coord(request.lat, request.lng)
     meeting_time = meeting_time_of(request.meeting_time)
     try:
-        route = enrich_route_stops(provider.route(origin, station, meeting_time), load_network())
+        route = apply_line_colors(enrich_route_stops(provider.route(origin, station, meeting_time), load_network()))
         return RouteResponse(route=RouteOut.model_validate(route_to_dict(route)))
     except RouteUnavailable as e:
         logger.warning("상세 경로 조회 실패, 추정 경로로 대체: %s", e)

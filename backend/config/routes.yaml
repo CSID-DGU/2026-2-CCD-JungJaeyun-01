@@ -7,6 +7,8 @@ meeting:
 # TRANSIT 요청에서 허용할 대중교통 수단 (버스 포함)
 transit_modes: [BUS, SUBWAY, TRAIN, LIGHT_RAIL]
 cache_ttl_days: 7
+# 하루에 Google을 실제로 호출할 수 있는 최대 횟수 (matrix + route, 재시도 포함). 넘으면 추정값으로 표시한다.
+daily_call_limit: 200
 retry:
   max_retries: 1      # 일시 오류(네트워크·5xx·429)만 재시도, 최대 1회
   backoff_seconds: 0.6

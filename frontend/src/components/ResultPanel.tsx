@@ -2,6 +2,8 @@ import { PARTICIPANT_COLORS, PURPOSE_OPTIONS } from '../constants'
 import type { RouteSelection, SegmentFocus } from '../map/types'
 import { routeKey, type RouteEntries, type RouteEntry } from '../routes'
 import type { ParticipantTravel, Place, RecommendResponse, Region, Route } from '../types'
+import { legColor } from '../map/geometry'
+import { lineLabel } from '../routeFormat'
 import RouteTimeline, { LineBadge, type TimelinePlay } from './RouteTimeline'
 
 interface Props {
@@ -46,6 +48,31 @@ function EstimateFlow({ route, color }: { route: Route; color: string }) {
         </li>
       ))}
     </ol>
+  )
+}
+
+/** 네이버·구글 지도처럼 구간 시간 비율로 쪼갠 막대. 도보=회색, 지하철=호선 색, 버스=종류별 색. 추정은 점선 + "추정". */
+function SegmentBar({ route, widthPct }: { route: Route; widthPct: number }) {
+  const estimated = route.source === 'estimate'
+  const total = route.segments.reduce((a, s) => a + Math.max(s.minutes, 0.5), 0)
+  return (
+    <span className={`seg-bar${estimated ? ' estimated' : ''}`} style={{ width: `${widthPct}%` }} role="img"
+      aria-label={route.segments.map((s) => `${s.mode === 'WALK' ? '도보' : lineLabel(s)} ${Math.max(1, Math.round(s.minutes))}분`).join(', ')}>
+      {route.segments.map((s, i) => {
+        const share = Math.max(s.minutes, 0.5) / total
+        const mins = `${Math.max(1, Math.round(s.minutes))}분`
+        const name = s.mode === 'WALK' ? '도보' : lineLabel(s)
+        const label = share >= 0.2 ? `${name} ${mins}` : share >= 0.09 ? mins : ''
+        const walk = s.mode === 'WALK'
+        return (
+          <span key={i} className={`seg-part ${walk ? 'walk' : ''}`} title={`${name} ${mins}`}
+            style={{ flexGrow: Math.max(s.minutes, 0.5), background: walk ? 'var(--walk-gray)' : legColor(s, '#888'), color: walk ? '#333' : (s.lineTextColor ?? '#fff') }}>
+            {label}
+          </span>
+        )
+      })}
+      {estimated && <em className="seg-est">추정</em>}
+    </span>
   )
 }
 
@@ -178,14 +205,25 @@ function TravelBars({
                   {p.name}
                 </span>
                 <span className="bar-track">
-                  <span
-                    className={`bar-fill${p.is_estimated ? ' estimated' : ''}`}
-                    style={{ width: `${(p.minutes / maxMinutes) * 100}%`, background: PARTICIPANT_COLORS[i] }}
-                  />
+                  {(() => {
+                    const e = routes[routeKey(region.station.id, i)]
+                    const widthPct = (p.minutes / maxMinutes) * 100
+                    return e?.status === 'ok' && e.route.source !== 'estimate' ? (
+                      <SegmentBar route={e.route} widthPct={widthPct} />
+                    ) : (
+                      <span
+                        className={`bar-fill${p.is_estimated ? ' estimated' : ''}`}
+                        style={{ width: `${widthPct}%`, background: PARTICIPANT_COLORS[i] }}
+                      >
+                        {p.is_estimated && <em className="seg-est">추정</em>}
+                      </span>
+                    )
+                  })()}
                 </span>
                 <span className="bar-value">
                   {fmt(p.minutes)}분{p.is_estimated && <em className="badge">추정</em>}
                 </span>
+                <span className="route-cta" aria-hidden="true">{open ? '경로 닫기 ▴' : '경로 보기 ›'}</span>
               </button>
               <div className="route-detail" aria-hidden={!open}>
                 <div className="route-detail-inner">

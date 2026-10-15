@@ -43,7 +43,7 @@ meetup-recommender/
 - 예외: 출발지 자동완성 `GET /api/search/places`(`services/place_lookup.py`)는 mock 없이 `USE_MOCK`과 관계없이 항상 실제 카카오 키워드 검색을 쓴다.
 - 경로 API 호출은 **2단계 구조**를 지킨다. 1단계는 API 없이 지하철 그래프(`app/subway.py`)로 후보를 점수화하고, 2단계는 1단계 상위 `SHORTLIST_SIZE`(기본 8)곳 — 지하철 그래프에는 버스가 없어서 버스가 유리한 지역이 탈락하지 않도록 최종 3곳보다 넓게 — 을 `computeRouteMatrix`(버스 포함 모든 대중교통 수단 허용)로 **검색당 최대 1회** 확인하고, 그 실제 값으로 RegionScore를 다시 계산해 최종 3곳을 정한다. 1단계 순위와 달라진 지역은 로그로 남긴다. 상세 경로(`computeRoutes`)는 사용자가 참여자 이름을 누를 때(`POST /api/route`)만 호출한다. 이 호출 횟수를 늘리는 변경은 테스트(`test_recommend_api.py`의 호출 횟수 테스트)가 깨지도록 되어 있다.
 - 경로 프로바이더는 `app/providers/`의 `RouteProvider`(matrix/route)를 구현한다. 기본 `ROUTE_PROVIDER=google`, ODsay(`providers/odsay.py`)는 기본 비활성화다. 프론트는 공통 경로 스키마(`app/route_model.py`: `totalMinutes, transfers, segments[{mode, lineName, lineColor, from, to, minutes, path}], source`)만 안다. 새 경로 API는 이 형식으로 변환해서 붙인다.
-- `ROUTE_MODE`: `replay`(기본, 저장본만·호출 0) | `record`(호출 + `backend/fixtures/google/` 저장) | `live`(호출 + 7일 디스크 캐시, 발표용). 개발·테스트는 replay로 하고 live는 발표 때만 쓴다. 실제 호출 테스트는 반드시 호출 수를 먼저 계산해서 알린다.
+- `ROUTE_MODE`: `live`(기본: 저장본 → 7일 캐시 → 없으면 호출 후 저장, 하루 `daily_call_limit` 상한) | `record`(호출 + `backend/fixtures/google/` 저장) | `replay`(저장본만·호출 0, 테스트 전용). 실제 호출 테스트는 반드시 호출 수를 먼저 계산해서 알린다.
 - Google 호출 보호: 캐시 키는 (출발지 좌표 소수 4자리, 도착역, 요일·시간대), 동시 같은 요청은 한 번만 호출(SingleFlight), 일시 오류만 1회 재시도, 키 제한·API 미사용·할당량 오류는 재시도 없이 일정 시간 호출을 멈춘다. FieldMask에는 쓰는 필드만 넣는다. 키는 백엔드 로그·응답에 남기지 않는다.
 - 경로 API가 실패한 값은 1단계 추정값으로 대체하고 응답의 `is_estimated`와 화면의 "추정"으로 명확히 표시한다. 상세 경로가 실패하면 그래프 추정 경로를 `source: "estimate"`(점선, "추정 경로" 라벨)로 돌려준다. 실패한 응답은 캐시하지 않는다.
 - 지하철 그래프 데이터(`backend/data/subway/`)의 출처와 한계는 그 폴더의 README에 있다. 데이터를 바꾸면 `scripts/build_subway_network.py`로 `network.json`을 다시 만든다.

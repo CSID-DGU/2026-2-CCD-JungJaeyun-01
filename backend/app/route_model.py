@@ -31,6 +31,8 @@ class Segment:
     line_text_color: str | None = None     # 노선 배지 글자색
     intermediate_stops: tuple[str, ...] | None = None  # 경유 정거장 이름 (출발·도착 제외)
     intermediate_stops_source: str | None = None       # "subway-map": 우리 노선도 데이터로 구한 값
+    line_kind: str | None = None                       # 버스 종류 ("간선", "지선", "광역" ...)
+    realtime: dict | None = None                       # 실시간 도착 정보를 붙일 때 쓸 승·하차 정류장/노선/방면 참조 (지금은 미사용)
 
 
 @dataclass(frozen=True)
@@ -64,6 +66,7 @@ def route_to_dict(route: Route) -> dict:
                 "headsign": s.headsign, "stopCount": s.stop_count, "lineTextColor": s.line_text_color,
                 "intermediateStops": list(s.intermediate_stops) if s.intermediate_stops is not None else None,
                 "intermediateStopsSource": s.intermediate_stops_source,
+                "lineKind": s.line_kind, "realtime": s.realtime,
             }
             for s in route.segments
         ],
@@ -86,6 +89,7 @@ def route_from_dict(d: dict) -> Route:
                 line_text_color=s.get("lineTextColor"),
                 intermediate_stops=tuple(s["intermediateStops"]) if s.get("intermediateStops") is not None else None,
                 intermediate_stops_source=s.get("intermediateStopsSource"),
+                line_kind=s.get("lineKind"), realtime=s.get("realtime"),
             )
             for s in d["segments"]
         ),

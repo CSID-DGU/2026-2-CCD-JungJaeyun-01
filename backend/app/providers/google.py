@@ -59,6 +59,7 @@ class GoogleSettings:
     timeout_seconds: float
     cooldown_seconds: float
     transit_modes: tuple[str, ...] = ("BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL")  # 허용할 대중교통 수단 (버스 포함)
+    daily_call_limit: int = 200                                                 # 하루 실제 호출 상한
 
 
 # ----------------------------------------------------------------------------- 시각·키
@@ -119,6 +120,23 @@ def _latlng(stop: dict) -> tuple[float, float] | None:
     return (ll["latitude"], ll["longitude"]) if ll else None
 
 
+def _stop_ref(stop: dict) -> dict:
+    ll = _latlng(stop)
+    # 정류소 ID: Google Routes는 주지 않는다. 실시간 정보를 붙일 때 채울 자리로 null을 둔다.
+    return {"name": stop.get("name"), "lat": ll[0] if ll else None, "lng": ll[1] if ll else None, "id": None}
+
+
+def _realtime_ref(td: dict, line: dict, vehicle: str, dep: dict, arr: dict) -> dict:
+    """나중에 실시간 도착 정보를 붙일 때 필요한 값(승·하차 정류장, 노선, 방면)을 따로 보관한다. 지금은 쓰지 않는다."""
+    agencies = line.get("agencies") or []
+    return {
+        "boardStop": _stop_ref(dep), "alightStop": _stop_ref(arr),
+        "line": {"name": line.get("name"), "number": line.get("nameShort"), "vehicleType": vehicle or None,
+                 "agency": (agencies[0].get("name") if agencies else None), "uri": line.get("uri"), "id": None},
+        "headsign": td.get("headsign"), "tripShortText": td.get("tripShortText"),
+    }
+
+
 def _parse_time(text: str | None) -> datetime | None:
     return datetime.fromisoformat(text.replace("Z", "+00:00")) if text else None
 
@@ -158,6 +176,7 @@ def convert_route(response: dict, origin: Coord, destination: Coord, utc_offset_
                 "line_color": line.get("color"), "line_text_color": line.get("textColor"),
                 "from": dep.get("name"), "to": arr.get("name"),
                 "headsign": td.get("headsign"), "stop_count": td.get("stopCount"),
+                "realtime": _realtime_ref(td, line, vehicle, dep, arr),
                 "dep": _parse_time(stops.get("departureTime")), "arr": _parse_time(stops.get("arrivalTime")),
             })
 
@@ -197,6 +216,7 @@ def convert_route(response: dict, origin: Coord, destination: Coord, utc_offset_
             from_name=r.get("from"), to_name=r.get("to"), minutes=round(r["minutes"], 1), path=tuple(path),
             distance_m=r["meters"] or None, departure_time=iso(dep_t[i]), arrival_time=iso(arr_t[i]),
             headsign=r.get("headsign"), stop_count=r.get("stop_count"), line_text_color=r.get("line_text_color"),
+            realtime=r.get("realtime"),
         ))
     transit = sum(1 for s in segments if s.mode != WALK)
     walks = [s for s in segments if s.mode == WALK]
@@ -239,6 +259,12 @@ class GoogleClient:
             self.store.add_usage("replay_hit")
             return json.loads(path.read_text(encoding="utf-8"))["response"]
 
+        if self.mode == "live":  # 캐시 우선: 이미 녹화해 둔 응답이 있으면 호출하지 않는다
+            path = self.fixture_path(kind, key)
+            if path.exists():
+                self.store.add_usage("replay_hit")
+                return json.loads(path.read_text(encoding="utf-8"))["response"]
+
         if not self.api_key:
             raise RouteUnavailable("GOOGLE_ROUTES_KEY가 설정되지 않았어요")
         with self._lock:
@@ -248,6 +274,10 @@ class GoogleClient:
         attempts = 1 + self.s.max_retries
         failure: ApiFailure | None = None
         for attempt in range(attempts):
+            used = self.store.usage()
+            if used.get("matrix", 0) + used.get("route", 0) >= self.s.daily_call_limit:
+                self.store.add_usage("limit_block")
+                raise RouteUnavailable(f"오늘 Google 호출 상한({self.s.daily_call_limit}회)에 도달했어요 (config/routes.yaml의 daily_call_limit)")
             self.store.add_usage(kind)  # 시도마다 센다
             try:
                 response = self._post(url, body, field_mask)

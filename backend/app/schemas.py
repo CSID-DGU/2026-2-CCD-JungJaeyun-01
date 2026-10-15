@@ -212,6 +212,8 @@ class RouteSegmentOut(BaseModel):
     lineTextColor: str | None = None
     intermediateStops: list[str] | None = None
     intermediateStopsSource: str | None = None
+    lineKind: str | None = None
+    realtime: dict | None = None   # 실시간 도착 정보용 참조 (승·하차 정류장, 노선, 방면, 정류소 ID 자리)
 
     model_config = {"populate_by_name": True}
 

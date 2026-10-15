@@ -42,7 +42,7 @@ export function LineBadge({ seg, fallbackColor }: { seg: RouteSegment; fallbackC
 }
 
 type Row =
-  | { kind: 'node'; id: string; time: string | null; title: string; sub?: string; color: string; end?: boolean }
+  | { kind: 'node'; id: string; time: string | null; title: string; sub?: string; color: string; end?: boolean; seg?: RouteSegment; transfer?: boolean }
   | { kind: 'leg'; id: string; index: number; seg: RouteSegment }
 
 function buildRows(route: Route, color: string, originName: string, originAddress: string, destinationName: string): Row[] {
@@ -61,7 +61,7 @@ function buildRows(route: Route, color: string, originName: string, originAddres
       } else {
         rows.push({
           kind: 'node', id: `board-${i}`, time: seg.departureTime, title: seg.from ?? '승차역',
-          sub: prev.mode === 'WALK' ? '승차' : '환승 · 승차', color: legColor(seg, color),
+          sub: prev.mode === 'WALK' ? '승차' : '환승', color: legColor(seg, color), seg, transfer: prev.mode !== 'WALK',
         })
       }
     }
@@ -159,8 +159,14 @@ export default function RouteTimeline(props: Props) {
                 <span className="tl-time">{fmtClock(row.time)}</span>
                 <span className="tl-rail"><i className="tl-dot" style={{ borderColor: row.color }} /></span>
                 <div className="tl-body">
-                  <strong>{row.title}</strong>
-                  {row.sub && <small>{row.sub}</small>}
+                  <strong>{row.title}{row.transfer && <em className="tl-transfer">환승</em>}</strong>
+                  {row.seg && (
+                    <span className="tl-board">
+                      <LineBadge seg={row.seg} fallbackColor={color} />
+                      {row.seg.headsign && <span className="tl-headsign">{row.seg.headsign}</span>}
+                    </span>
+                  )}
+                  {row.sub && !row.transfer && <small>{row.sub}</small>}
                 </div>
               </li>
             )
@@ -198,12 +204,12 @@ export default function RouteTimeline(props: Props) {
                         {seg.headsign && <span className="tl-headsign">{seg.headsign}</span>}
                       </span>
                       <span className="tl-transit-meta">
-                        {wholeMinutes(seg.minutes)}분{seg.stopCount ? ` · ${seg.stopCount}개 정거장` : ''}
+                        {wholeMinutes(seg.minutes)}분{seg.stopCount ? ` · ${seg.stopCount}개 ${seg.mode === 'BUS' ? '정류장' : '정거장'}` : ''}
                       </span>
                     </>
                   )}
                 </button>
-                {!walk && (
+                {seg.mode === 'SUBWAY' && (
                   <>
                     <button
                       type="button"
@@ -218,7 +224,7 @@ export default function RouteTimeline(props: Props) {
                         })
                       }
                     >
-                      경유 정거장 {stopsOpen ? '접기 ▴' : '보기 ▾'}
+                      경유 정거장 {Math.max((seg.stopCount ?? 1) - 1, seg.intermediateStops?.length ?? 0)}개 {stopsOpen ? '접기 ▴' : '보기 ▾'}
                     </button>
                     <div className={`tl-collapse${stopsOpen ? ' open' : ''}`} aria-hidden={!stopsOpen}>
                       <div className="tl-collapse-inner">

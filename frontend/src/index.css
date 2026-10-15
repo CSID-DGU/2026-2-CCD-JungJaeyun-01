@@ -1,5 +1,6 @@
 :root {
   --bg: #f4f5f7;
+  --walk-gray: #c9ced6;
   --panel: #ffffff;
   --text: #1f2937;
   --muted: #6b7280;
@@ -563,7 +564,7 @@ input.selected {
 /* 참여자 행은 버튼: 클릭하면 그 사람의 이동 경로가 지도에 표시된다 */
 .bar-row {
   display: grid;
-  grid-template-columns: 84px 1fr 72px;
+  grid-template-columns: 70px 1fr 40px auto;
   align-items: center;
   gap: 8px;
   width: 100%;
@@ -666,7 +667,7 @@ input.selected {
 }
 
 .bar-track {
-  height: 14px;
+  height: 22px;
   border-radius: 7px;
   background: #eef0f3;
   overflow: hidden;
@@ -1443,3 +1444,71 @@ input.selected {
     transition: none !important;
   }
 }
+
+/* ---- 경로 보기 버튼 / 구간 막대 / 환승 강조 ---- */
+.route-cta {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.bar-row:hover .route-cta,
+.bar-row.selected .route-cta {
+  background: var(--primary);
+  color: #fff;
+}
+.seg-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  gap: 1px;
+  background: #fff;
+}
+.seg-part {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.seg-bar.estimated .seg-part {
+  background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0 4px, transparent 4px 8px);
+  outline: 1.5px dashed #6b7280;
+  outline-offset: -2px;
+}
+.seg-est {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #fff;
+  color: #6b7280;
+}
+.bar-fill { position: relative; }
+.bar-fill.estimated { outline: 1.5px dashed #6b7280; outline-offset: -2px; }
+.tl-board { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.tl-transfer {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fff1d6;
+  color: #9a5b00;
+}
+.tl-node:has(.tl-transfer) .tl-body > strong { font-size: 1.05em; }
+.tl-node:has(.tl-transfer) .tl-dot { border-width: 4px; }

@@ -251,10 +251,15 @@ function App() {
       setData(result)
       setSelectedRegion(0)
       setSelectedPlaceId(null)
-      setRouteSelection(null)
+      setRouteSelection(0) // 1위 지역의 첫 참여자 경로를 기본으로 펼친다
       setSegmentFocus(null)
       setViewMode('overview')
+      latest.current = { ...latest.current, data: result, selectedRegion: 0, routeSelection: 0 }
       bumpMotion('search') // 전체를 보여준 뒤 1·2·3위 마커가 순서대로 떨어진다
+      const token = ++selectionToken.current
+      void ensureRoutes(0, [0]).then(() => {
+        if (token === selectionToken.current) setTimeout(() => token === selectionToken.current && bumpMotion('route'), 1800)
+      })
       setUsageTick((t) => t + 1)
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : '추천을 가져오지 못했습니다.')

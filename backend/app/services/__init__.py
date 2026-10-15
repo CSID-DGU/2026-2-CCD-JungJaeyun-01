@@ -34,7 +34,7 @@ def get_estimator() -> TravelEstimator:
 
 @lru_cache
 def get_route_provider():
-    """ROUTE_PROVIDER=google(기본) | odsay(기본 비활성화). Google은 ROUTE_MODE=live|record|replay(기본 replay)를 따른다."""
+    """ROUTE_PROVIDER=google(기본) | odsay(기본 비활성화). Google은 ROUTE_MODE=live(기본)|record|replay(테스트용)를 따른다."""
     from app.providers.google import GoogleClient, GoogleRouteProvider
     from app.providers.odsay import OdsayClient, OdsayRouteProvider
 

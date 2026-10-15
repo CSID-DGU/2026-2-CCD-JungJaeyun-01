@@ -210,7 +210,7 @@ class FakeHttp:
 def google(tmp_path):
     http = FakeHttp()
     store = RoutesStore(tmp_path / "routes.sqlite3")
-    provider = GoogleRouteProvider(GoogleClient("test-key", "live", store, SETTINGS, http=http), SETTINGS)
+    provider = GoogleRouteProvider(GoogleClient("test-key", "live", store, SETTINGS, fixtures_dir=tmp_path / "fx", http=http), SETTINGS)
     app.dependency_overrides[get_route_provider] = lambda: provider
     app.dependency_overrides[get_routes_store] = lambda: store
     yield http, provider, store
@@ -240,7 +240,7 @@ def test_route_detail_is_requested_only_when_asked_and_then_cached(google):
     assert {"totalMinutes", "transfers", "segments", "source"} <= set(route) and route["source"] == "google"
     seg = route["segments"][0]
     assert {"mode", "lineName", "lineColor", "from", "to", "minutes", "path"} <= set(seg)  # 공통 스키마의 기본 필드
-    assert (seg["mode"], seg["lineName"], seg["lineColor"]) == ("SUBWAY", "2호선", "#35b12b")
+    assert (seg["mode"], seg["lineName"], seg["lineColor"]) == ("SUBWAY", "2호선", "#00A84D")
     assert seg["path"][0][0] == pytest.approx(37.5499, abs=0.01)  # [lat, lng] 순서
     c.post("/api/route", json=body)
     assert http.count(ROUTES_URL) == 1  # 두 번째 클릭은 캐시
@@ -258,7 +258,7 @@ def test_route_response_contains_bus_segments_like_subway_ones(tmp_path):
     finally:
         app.dependency_overrides.clear()
     bus = next(s for s in r["route"]["segments"] if s["mode"] == "BUS")
-    assert (bus["lineName"], bus["lineColor"]) == ("741", "#374ff2")  # 버스도 노선명·노선 색을 가진다
+    assert (bus["lineName"], bus["lineColor"]) == ("741", "#3D5BAB")  # 버스도 노선명·노선 색을 가진다
     assert {"mode", "lineName", "lineColor", "from", "to", "minutes", "path"} <= set(bus) and len(bus["path"]) > 20
 
 

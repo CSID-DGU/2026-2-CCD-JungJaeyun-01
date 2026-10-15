@@ -377,3 +377,25 @@ def test_record_mode_always_calls_even_if_the_cache_has_the_answer(tmp_path):
 def test_invalid_mode_is_rejected(tmp_path):
     with pytest.raises(ValueError):
         GoogleClient("k", "turbo", RoutesStore(tmp_path / "r.sqlite3"), SETTINGS)
+
+
+def test_daily_call_limit_stops_real_calls_and_falls_back(tmp_path):
+    from dataclasses import replace
+    settings = replace(SETTINGS, daily_call_limit=1)
+    store = RoutesStore(tmp_path / "r.sqlite3")
+    http = ScriptedHttp(ROUTE_OK, ROUTE_OK)
+    client = GoogleClient("k", "live", store, settings, fixtures_dir=tmp_path / "fx", http=http, sleep=lambda s: None)
+    p = GoogleRouteProvider(client, settings)
+    p.route(HAPJEONG, EULJIRO, MEETING)
+    with pytest.raises(RouteUnavailable, match="상한"):
+        p.route(HAPJEONG, ANGUK, MEETING)
+    assert len(http.requests) == 1
+
+
+def test_live_mode_uses_a_recorded_fixture_before_calling(tmp_path):
+    fx = tmp_path / "fx"
+    rec, _, h1 = provider(tmp_path, ScriptedHttp(ROUTE_OK), mode="record", fixtures=fx)
+    rec.route(HAPJEONG, EULJIRO, MEETING)
+    live, _, h2 = provider(tmp_path / "b" if (tmp_path / "b").mkdir() is None else tmp_path, ScriptedHttp(), fixtures=fx)
+    live.route(HAPJEONG, EULJIRO, MEETING)
+    assert len(h1.requests) == 1 and len(h2.requests) == 0

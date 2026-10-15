@@ -45,7 +45,7 @@ cp .env.example .env
 | `VITE_KAKAO_JS_KEY` | 지도 표시 (프론트에서 쓰는 유일한 키) | 같은 화면의 **JavaScript 키** |
 | `GOOGLE_ROUTES_KEY` | 상위 3곳의 실제 대중교통 시간·상세 경로 (백엔드 전용) | [Google Cloud Console](https://console.cloud.google.com) → **Routes API** 사용 설정 → 사용자 인증 정보 → API 키 (결제 계정 필요) |
 | `ROUTE_PROVIDER` | 경로 API 종류: `google`(기본) \| `odsay`(기본 비활성화) | - |
-| `ROUTE_MODE` | Google 호출 방식: `replay`(기본) \| `record` \| `live` — 아래 "경로 API 호출 구조" 참고 | - |
+| `ROUTE_MODE` | Google 호출 방식: `live`(기본) \| `record` \| `replay`(테스트용) — 아래 "경로 API 호출 구조" 참고 | - |
 | `ODSAY_API_KEY` | `ROUTE_PROVIDER=odsay`일 때만 사용 | [ODsay LAB](https://lab.odsay.com) → 애플리케이션 등록 → API 키 |
 | `GOOGLE_PLACES_API_KEY` | (선택) 평점·리뷰 수 (백엔드 전용) | [Google Cloud Console](https://console.cloud.google.com) → **Places API (New)** 사용 설정 → 사용자 인증 정보 → API 키 |
 | `USE_MOCK` | `true`: 장소 검색·평점을 가짜 데이터로 대체 / `false`: 실제 API 호출 (경로 API는 `ROUTE_MODE`가 따로 정한다) | - |
@@ -79,9 +79,9 @@ cp .env.example .env
 
 | `ROUTE_MODE` | 동작 | 쓰임 |
 |---|---|---|
-| `replay` (기본) | `backend/fixtures/google/`의 저장본만 사용. 호출 0. 저장본이 없는 요청은 추정값으로 표시 | 개발·테스트 |
+| `live` (기본) | 캐시 우선: `backend/fixtures/google/` 저장본 → 7일 디스크 캐시 → 없을 때만 실제 호출 후 캐시 저장. 하루 호출 상한은 `backend/config/routes.yaml`의 `daily_call_limit`(기본 200), 넘으면 추정값으로 표시 | 평소·발표 |
 | `record` | 실제로 호출하고 응답을 `backend/fixtures/google/`에 저장 (캐시는 쓰지 않음) | 저장본 만들기 |
-| `live` | 실제 호출 + 7일 디스크 캐시 | 발표용 |
+| `replay` | 저장본만 사용. 호출 0. 저장본이 없는 요청은 추정값으로 표시 | 테스트 전용 |
 
 저장본은 요청(출발지 4자리 좌표·도착역·시간대)이 같을 때만 재사용됩니다. 지금 들어 있는 저장본은 재윤(홍대입구역)·서영(잠실역) 2명의 검색 1회(후보 8곳)와 최종 3곳 경로 6개, 그리고 버스가 포함된 경로 1개(서초구 내곡동 → 강남역)입니다.
 새로 녹화하려면 `ROUTE_MODE=record`로 백엔드를 띄우고 원하는 참여자로 검색한 뒤 이름을 눌러 보세요 (호출 수 = 검색 1 + 이름 클릭마다 1).

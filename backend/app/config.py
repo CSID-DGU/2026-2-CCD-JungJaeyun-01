@@ -190,6 +190,7 @@ def load_google_settings():
         timeout_seconds=float(raw["timeout_seconds"]),
         cooldown_seconds=float(raw["cooldown_seconds"]),
         transit_modes=tuple(raw["transit_modes"]),
+        daily_call_limit=int(raw["daily_call_limit"]),
     )
 
 

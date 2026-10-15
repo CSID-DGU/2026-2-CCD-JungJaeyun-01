@@ -326,7 +326,7 @@ def test_cafe_purpose_uses_cafe_category(full_client):
                for r in body["regions"] for p in r["places"])
 
 
-def test_ratings_unavailable_still_returns_places_with_renormalized_weights(full_client):
+def test_ratings_unavailable_still_returns_places_scored_with_the_prior(full_client):
     class NoRatings(RatingService):
         source = "google"
 
@@ -337,9 +337,9 @@ def test_ratings_unavailable_still_returns_places_with_renormalized_weights(full
     body = post_full(full_client).json()
     assert body["meta"]["ratings"]["status_counts"] == {"quota_exceeded": 15}
     place = body["regions"][0]["places"][0]
-    assert place["rating"] is None and place["components"]["rating"] is None
-    assert set(place["weights_used"]) == {"accessibility", "purpose", "age"}
-    assert sum(place["weights_used"].values()) == pytest.approx(1.0, abs=1e-3)
+    assert place["rating"] is None  # 화면에는 "평점 정보 없음" (가짜 평점을 만들어 보이지 않는다)
+    assert place["components"]["popularity"] == 0.0 and place["components"]["rating"] is not None  # 점수만 사전 평균으로 계산
+    assert set(place["weights_used"]) == {"accessibility", "rating", "popularity", "purpose", "age"}
     assert place["reason"].endswith("평점 정보 없음")
 
 

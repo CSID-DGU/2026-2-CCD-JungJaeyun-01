@@ -250,6 +250,33 @@ def _line_hops(network: SubwayNetwork, line: str, start: str, end: str) -> list[
     return path[::-1]
 
 
+# 2호선 순환선 본선(내선순환 진행 순서). 지선(성수·신정)은 포함하지 않는다.
+RING_2 = ("시청", "을지로입구", "을지로3가", "을지로4가", "동대문역사문화공원", "신당", "상왕십리", "왕십리", "한양대", "뚝섬",
+          "성수", "건대입구", "구의", "강변", "잠실나루", "잠실", "잠실새내", "종합운동장", "삼성", "선릉", "역삼", "강남",
+          "교대", "서초", "방배", "사당", "낙성대", "서울대입구", "봉천", "신림", "신대방", "구로디지털단지", "대림", "신도림",
+          "문래", "영등포구청", "당산", "합정", "홍대입구", "신촌", "이대", "아현", "충정로")
+
+
+def ring_direction(line: str, start: str, nxt: str) -> str | None:
+    """2호선 순환선에서 start → nxt가 내선순환이면 '내선', 외선순환이면 '외선'. 순환선 밖이면 None."""
+    if line != "2호선" or start not in RING_2 or nxt not in RING_2:
+        return None
+    i, j, n = RING_2.index(start), RING_2.index(nxt), len(RING_2)
+    if (i + 1) % n == j:
+        return "내선"
+    if (i - 1) % n == j:
+        return "외선"
+    return None
+
+
+def direction_headsign(seg: Segment, path: list[str]) -> str | None:
+    """승차 후 첫 정차역 기준의 실제 진행 방향 문구. Google의 headsign은 열차 종착역이라 순환선에서는 방향을 오해하게 한다."""
+    if len(path) < 2:
+        return None
+    ring = ring_direction(seg.line_name or "", _plain(path[0]), _plain(path[1]))
+    return f"{ring}순환 · {_plain(path[1])} 방면" if ring else None
+
+
 def enrich_route_stops(route: Route, network: SubwayNetwork) -> Route:
     """지하철 구간의 경유 정거장 목록을 우리 노선도 데이터로 채운다.
 
@@ -261,6 +288,7 @@ def enrich_route_stops(route: Route, network: SubwayNetwork) -> Route:
         if seg.mode == SUBWAY and seg.line_name and seg.stop_count and seg.from_name and seg.to_name:
             path = _line_hops(network, seg.line_name, _plain(seg.from_name), _plain(seg.to_name))
             if path and len(path) - 1 == seg.stop_count:
-                seg = replace(seg, intermediate_stops=tuple(path[1:-1]), intermediate_stops_source="subway-map")
+                seg = replace(seg, intermediate_stops=tuple(path[1:-1]), intermediate_stops_source="subway-map",
+                              headsign=direction_headsign(seg, path) or seg.headsign)
         segments.append(seg)
     return replace(route, segments=tuple(segments))

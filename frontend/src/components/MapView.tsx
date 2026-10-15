@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { placeKind } from '../categoryKind'
 import { kakaoPlaceUrl } from '../links'
-import { kindIconSvg } from '../map/pinIcons'
+import { kindIconSvg, personIconSvg } from '../map/pinIcons'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { MapPinOff } from 'lucide-react'
 import { diagnoseKakaoMap } from '../api'
@@ -33,6 +33,8 @@ interface Props {
   routes: RouteEntries
   /** 타임라인에서 고른 구간 (그 구간만 강조하고 그 구간으로 이동) */
   segmentFocus: SegmentFocus | null
+  /** 결과 직후 기본으로 펼친 경로를 그리라는 신호(증가할 때마다 한 번). 시점은 움직이지 않고 선만 그린다 */
+  autoRouteTick?: number
   /** 지도에 경로 그리기를 시작하는 순간 알린다 (타임라인 등장 모션을 같은 시점에 시작하려고) */
   onRouteDrawStart?: (participants: number[], staggerMs: number) => void
   viewMode: ViewMode
@@ -158,8 +160,22 @@ export default function MapView(props: Props) {
       if (lastFit.current) motionCtl.current?.jump(computeFitTarget(map.current, lastFit.current, paddingFor()))
     })
     observer.observe(box.current)
-    return () => observer.disconnect()
-  }, [paddingFor])
+    // 부모(지도 영역)와 창 크기가 바뀔 때, 폰트·레이아웃이 자리 잡은 직후에도 다시 맞춘다 (PC에서 타일이 밀리고 왼쪽·위에 빈 띠가 생기던 문제)
+    if (box.current.parentElement) observer.observe(box.current.parentElement)
+    const relayout = () => {
+      if (!map.current) return
+      map.current.relayout()
+      if (lastFit.current) motionCtl.current?.jump(computeFitTarget(map.current, lastFit.current, paddingFor()))
+    }
+    window.addEventListener('resize', relayout)
+    const timers = [100, 600, 1500].map((ms) => setTimeout(relayout, ms))
+    void document.fonts?.ready.then(relayout)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', relayout)
+      timers.forEach(clearTimeout)
+    }
+  }, [paddingFor, status])
 
   // 2) 마커 그리기. 연출이 예정된 마커는 'pre'(숨김)로 만들어 두었다가 이동이 끝난 뒤 보여준다.
   useEffect(() => {
@@ -223,6 +239,7 @@ export default function MapView(props: Props) {
     origins.forEach((o, i) =>
       addPin(`origin-${i}`, o, 'pin-origin', unique ? initials[i] : String(i + 1), `${o.name} 출발지`, 3, {
         color: o.color,
+        iconSvg: personIconSvg(20), // 참여자는 사람 아이콘 + 참여자 색, 추천 지역은 순위 숫자라서 한눈에 구별된다
         label: o.name,
       }),
     )
@@ -254,6 +271,19 @@ export default function MapView(props: Props) {
     }
   }, [status, origins, regions, selectedRegion, selectedPlaceId, routeSelection, viewMode, motion.id, motion.kind, onSelectRegion, onSelectPlace])
 
+  // 2-1) 결과 직후 기본 경로: 카메라 이동(검색 연출)을 끊지 않도록 별도 신호로 선만 그린다. 시점은 참여자 전원 + 추천 지역이 다 보이는 그대로.
+  const autoTick = props.autoRouteTick ?? 0
+  useEffect(() => {
+    const routes = routeLayer.current
+    const p = latest.current
+    if (status !== 'ready' || autoTick === 0 || !routes || p.routeSelection === null) return
+    const drawables = drawablesFor(p)
+    const stagger = drawables.length > 1 ? Math.min(200, 400 / (drawables.length - 1)) : 0
+    routes.clear()
+    p.onRouteDrawStart?.(drawables.map((d) => d.participant), stagger)
+    void routes.draw(drawables, { animate: !prefersReducedMotion(), durationMs: DRAW_MS, staggerMs: stagger })
+  }, [autoTick, status])
+
   // 3) 동작별 이동과 연출. 이동이 끝난 뒤에 연출을 시작하고, 새 동작이 오면 이전 이동은 취소한다.
   useEffect(() => {
     const ctl = motionCtl.current
@@ -271,7 +301,17 @@ export default function MapView(props: Props) {
 
     const fit = async (points: LatLng[]) => {
       lastFit.current = points
+      await ctl.whenIdle()
+      if (!alive()) return false
       const ok = await ctl.moveTo(computeFitTarget(map.current, points, paddingFor()))
+      if (ok && alive() && points.length > 1) {
+        // 마지막 확인: 점이 하나라도 화면 밖이면(애니메이션이 겹쳐 일부가 무시된 경우) 애니메이션 없이 다시 맞춘다.
+        const kakao = window.kakao
+        const bounds = map.current.getBounds()
+        if (points.some((q) => !bounds.contain(new kakao.maps.LatLng(q.lat, q.lng)))) {
+          ctl.jump(computeFitTarget(map.current, points, paddingFor()))
+        }
+      }
       return ok && alive()
     }
     const show = (e: HTMLElement | undefined) => e?.classList.remove('pre')

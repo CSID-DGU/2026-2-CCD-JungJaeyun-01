@@ -50,6 +50,9 @@ function App() {
   const [submitted, setSubmitted] = useState<SharedInput | null>(null) // 결과를 만든 입력값 (공유 주소용)
   const [notice, setNotice] = useState<string | null>(null)
   const [introPlaying, setIntroPlaying] = useState(shouldPlayIntro) // 세션당 1번, reduced-motion이면 생략
+  // 디버그 박스(경로 API 호출 수 등)는 주소에 ?debug=1이 있을 때만 보인다
+  const [showDebug] = useState(() => new URLSearchParams(window.location.search).get('debug') === '1')
+  const [autoRoute, setAutoRoute] = useState(0) // 결과 직후 기본 경로 그리기 신호 (지도 시점은 건드리지 않는다)
   const [liveMode, setLiveMode] = useState(false) // "지금 출발": 실시간 도착 정보 수동 켜기
 
   // 콜백(지도에 넘기는 안정적인 함수)이 항상 최신 값을 보도록 ref에 둔다.
@@ -282,7 +285,7 @@ function App() {
       bumpMotion('search') // 전체를 보여준 뒤 1·2·3위 마커가 순서대로 떨어진다
       const token = ++selectionToken.current
       void ensureRoutes(0, [0]).then(() => {
-        if (token === selectionToken.current) setTimeout(() => token === selectionToken.current && bumpMotion('route'), 1800)
+        if (token === selectionToken.current) setTimeout(() => token === selectionToken.current && setAutoRoute((n) => n + 1), 1800)
       })
       setUsageTick((t) => t + 1)
     } catch (e) {
@@ -342,6 +345,7 @@ function App() {
           segmentFocus={segmentFocus}
           viewMode={viewMode}
           motion={motion}
+          autoRouteTick={autoRoute}
           obstacleRef={panelRef}
           onSelectRegion={selectRegion}
           onSelectPlace={selectPlace}
@@ -412,7 +416,7 @@ function App() {
 
       {introPlaying && <Intro onDone={() => setIntroPlaying(false)} />}
 
-      <DevUsage refreshKey={usageTick} accuracy={data?.meta.estimate_accuracy ?? null} />
+      {showDebug && <DevUsage refreshKey={usageTick} accuracy={data?.meta.estimate_accuracy ?? null} />}
     </div>
   )
 }

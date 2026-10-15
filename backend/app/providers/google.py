@@ -220,11 +220,17 @@ def convert_route(response: dict, origin: Coord, destination: Coord, utc_offset_
         ))
     transit = sum(1 for s in segments if s.mode != WALK)
     walks = [s for s in segments if s.mode == WALK]
+    # 총 소요시간은 Google 경로 상세의 duration 하나만 쓰고, 출발 시각은 "도착 시각 - 총 소요시간"으로 맞춘다.
+    # (구간별 시각에서 거꾸로 구한 출발 시각은 첫 정류장 대기 시간이 빠져 화면마다 시간이 달랐다)
+    total = max(1, round(_seconds(route.get("duration"))))
+    arrival_iso = segments[-1].arrival_time if segments else None
+    departure_iso = segments[0].departure_time if segments else None
+    if arrival_iso:
+        departure_iso = (datetime.fromisoformat(arrival_iso) - timedelta(minutes=total)).isoformat(timespec="seconds")
     return Route(
-        total_minutes=round(_seconds(route.get("duration"))), transfers=max(0, transit - 1),
+        total_minutes=total, transfers=max(0, transit - 1),
         segments=tuple(segments), source="google",
-        departure_time=segments[0].departure_time if segments else None,
-        arrival_time=segments[-1].arrival_time if segments else None,
+        departure_time=departure_iso, arrival_time=arrival_iso,
         walk_minutes=round(sum(s.minutes for s in walks), 1), walk_meters=sum(s.distance_m or 0 for s in walks),
     )
 

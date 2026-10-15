@@ -114,8 +114,10 @@ class TestTimelineMatchesGoogle:
         walk, ride = route.segments[0], route.segments[1]
         assert walk.mode == WALK and ride.mode == SUBWAY
         assert walk.arrival_time == ride.departure_time                              # 걸어서 승차역에 도착하는 시각 = 승차 시각
-        assert close(route.departure_time, datetime.fromisoformat(ride.departure_time) - timedelta(minutes=walk.minutes))
-        assert route.departure_time == walk.departure_time
+        walk_start = datetime.fromisoformat(ride.departure_time) - timedelta(minutes=walk.minutes)
+        assert abs((datetime.fromisoformat(route.departure_time) - walk_start).total_seconds()) <= 90  # 총 소요시간 기준이라 1분쯤 차이 가능
+        # 출발 시각 = 도착 시각 - 총 소요시간: 어느 화면에서 재도 같은 소요시간이 나온다
+        assert datetime.fromisoformat(route.arrival_time) - datetime.fromisoformat(route.departure_time) == timedelta(minutes=route.total_minutes)
         assert route.arrival_time == ride.arrival_time                               # 마지막이 대중교통이면 하차 시각이 도착 시각
         assert datetime.fromisoformat(route.arrival_time) <= datetime(2026, 10, 17, 18, 0, tzinfo=KST)  # 약속 시간 안에 도착
         assert route.walk_meters == walk.distance_m == 44 and route.walk_minutes == walk.minutes
@@ -195,5 +197,25 @@ class TestIntermediateStops:
             app.dependency_overrides.clear()
         seg = next(s for s in body["route"]["segments"] if s["mode"] == "SUBWAY")
         assert seg["intermediateStops"][:3] == ["신촌", "이대", "아현"] and seg["intermediateStopsSource"] == "subway-map"
-        assert body["route"]["departureTime"].endswith("+09:00") and seg["headsign"] == "신도림역 방면"
+        assert body["route"]["departureTime"].endswith("+09:00") and seg["headsign"] == "내선순환 · 신촌 방면"
         assert provider.meeting_times[0].weekday() == 5  # 기본 약속 시간(토요일)으로 호출
+
+
+class TestRingDirection:
+    def test_hongdae_to_dongdaemun_is_the_inner_loop_toward_sinchon_not_sindorim(self):
+        from app.subway import enrich_route_stops, load_network
+        data, origin, dest = load("arrive_hongdae_dongdaemun")
+        route = convert_route(data["response"], origin, dest)
+        assert route.segments[1].headsign == "신도림역 방면"            # Google은 열차 종착역을 준다
+        ride = enrich_route_stops(route, load_network()).segments[1]
+        assert ride.headsign == "내선순환 · 신촌 방면"                  # 실제 진행 방향 (다음 역 기준)
+        assert ride.realtime["headsign"] == "신도림역 방면"             # 실시간 매칭용 원본은 그대로 보관
+
+    def test_ring_direction_helper(self):
+        from app.subway import ring_direction
+        assert ring_direction("2호선", "홍대입구", "신촌") == "내선"
+        assert ring_direction("2호선", "홍대입구", "합정") == "외선"
+        assert ring_direction("2호선", "충정로", "시청") == "내선"      # 순환 이음매
+        assert ring_direction("2호선", "시청", "충정로") == "외선"
+        assert ring_direction("3호선", "홍대입구", "신촌") is None
+        assert ring_direction("2호선", "성수", "뚝섬") == "외선"

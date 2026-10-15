@@ -6,7 +6,9 @@ PlaceScore = Σ (가중치 × 항목 점수), 각 항목은 0~1.
   인기도   : log(1 + 리뷰 수) / log(1 + popularity_cap)
   목적 적합성 / 연령대 적합성 : category_name 키워드 기반 (값은 config에서 주입)
 
-평점 데이터가 없으면 평점·인기도 항목을 빼고 남은 가중치를 합이 1이 되도록 재정규화한다.
+평점 데이터가 없으면 항목을 빼지 않고(재정규화 없음) 사전 평균 평점 + 리뷰 수 0으로 계산한다:
+평점 항목은 사전 평균(prior_mean)에 해당하는 중간 점수, 인기도는 최저(0)가 된다. 그래야 평점이 없는 장소가
+평점이 확인된 장소보다 위로 올라가지 않는다.
 """
 
 import math
@@ -65,7 +67,7 @@ class PlaceFeatures:
 class PlaceScoreResult:
     score: float
     components: Mapping[str, float | None]  # 값을 구하지 못한 항목은 None
-    weights_used: Mapping[str, float]       # 재정규화 후 실제 적용된 가중치 (합 1)
+    weights_used: Mapping[str, float]       # 실제 적용된 가중치 (합 1)
     rating_used: bool
 
 
@@ -127,17 +129,17 @@ def score_place(
     params: PlaceScoringParams,
 ) -> PlaceScoreResult:
     has_rating = features.rating is not None and features.review_count is not None
+    # 평점이 없으면 사전 평균 평점, 리뷰 수 0으로 넣는다 (항목을 빼면 다른 항목이 부풀려져서 오히려 유리해진다).
+    rating = features.rating if has_rating else params.prior_mean
+    reviews = features.review_count if has_rating else 0
     components: dict[str, float | None] = {
         "accessibility": accessibility_score(features.distance_m, params.radius_m),
-        "rating": (rating_score(features.rating, features.review_count, params)
-                   if has_rating else None),
-        "popularity": (popularity_score(features.review_count, params.popularity_cap)
-                       if has_rating else None),
+        "rating": rating_score(rating, reviews, params),
+        "popularity": popularity_score(reviews, params.popularity_cap),
         "purpose": clamp01(features.purpose_fit),
         "age": clamp01(features.age_fit),
     }
-    available = [name for name, value in components.items() if value is not None]
-    used = renormalize_weights(weights.as_dict(), available)
+    used = dict(weights.as_dict())
     score = sum(used[name] * components[name] for name in used)
     return PlaceScoreResult(score=score, components=components, weights_used=used, rating_used=has_rating)
 

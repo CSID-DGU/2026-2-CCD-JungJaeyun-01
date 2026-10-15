@@ -157,7 +157,7 @@ class PlaceOut(BaseModel):
     phone: str
     score: float
     components: PlaceComponentsOut
-    weights_used: dict[str, float]  # 재정규화 후 실제 적용된 가중치
+    weights_used: dict[str, float]  # 실제 적용된 가중치
     rating: float | None
     review_count: int | None
     rating_status: str

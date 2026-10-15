@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { legColor } from '../map/geometry'
-import { lineLabel } from '../routeFormat'
+import { fitMinutes, lineLabel } from '../routeFormat'
 import { fmtClock, fmtDay, minutesBetween } from '../meeting'
 import type { Route, RouteSegment } from '../types'
 import { formatArrival, realtimeQuery, REFRESH_MS, useArrivals } from '../useArrivals'
@@ -35,7 +35,6 @@ const AUTO_LIVE_BEFORE_MS = 30 * 60_000
 const TOTAL_ANIMATION_MS = 1000
 
 const fmtDistance = (m: number) => (m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`)
-const wholeMinutes = (m: number) => Math.max(1, Math.round(m))
 
 /** 노선 배지: 지하철은 노선 색 배지, 버스는 버스 번호 배지 (Google이 준 색·글자색 그대로) */
 export function LineBadge({ seg, fallbackColor }: { seg: RouteSegment; fallbackColor: string }) {
@@ -145,7 +144,8 @@ export default function RouteTimeline(props: Props) {
 
   const departure = route.departureTime
   const arrival = route.arrivalTime
-  const total = departure && arrival ? minutesBetween(departure, arrival) : route.totalMinutes
+  const total = route.totalMinutes // 소요시간은 경로 상세의 이 값 하나만 쓴다
+  const fitted = fitMinutes(route)
   const early = arrival ? minutesBetween(arrival, meetingTime) : null
   const walkMinutes = route.walkMinutes ?? 0
 
@@ -168,9 +168,9 @@ export default function RouteTimeline(props: Props) {
           {route.segments.map((seg, i) => (
             <li key={i}>
               {seg.mode === 'WALK' ? (
-                <span className="flow-walk" title={`도보 ${wholeMinutes(seg.minutes)}분`}>
+                <span className="flow-walk" title={`도보 ${fitted[i]}분`}>
                   <span aria-hidden="true">🚶</span>
-                  <small>{wholeMinutes(seg.minutes)}분</small>
+                  <small>{fitted[i]}분</small>
                 </span>
               ) : (
                 <LineBadge seg={seg} fallbackColor={color} />
@@ -227,7 +227,7 @@ export default function RouteTimeline(props: Props) {
                 >
                   {walk ? (
                     <span className="tl-walk">
-                      <span aria-hidden="true">🚶</span> 도보 약 {wholeMinutes(seg.minutes)}분
+                      <span aria-hidden="true">🚶</span> 도보 약 {fitted[index]}분
                       {seg.distanceMeters ? ` · ${fmtDistance(seg.distanceMeters)}` : ''}
                     </span>
                   ) : (
@@ -237,7 +237,7 @@ export default function RouteTimeline(props: Props) {
                         {seg.headsign && <span className="tl-headsign">{seg.headsign}</span>}
                       </span>
                       <span className="tl-transit-meta">
-                        {wholeMinutes(seg.minutes)}분{seg.stopCount ? ` · ${seg.stopCount}개 ${seg.mode === 'BUS' ? '정류장' : '정거장'}` : ''}
+                        {fitted[index]}분{seg.stopCount ? ` · ${seg.stopCount}개 ${seg.mode === 'BUS' ? '정류장' : '정거장'}` : ''}
                       </span>
                     </>
                   )}

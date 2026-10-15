@@ -11,6 +11,7 @@ from app.scoring.place import (
     bayesian_rating,
     keyword_fit,
     reason_line,
+    rating_score,
     renormalize_weights,
     score_place,
 )
@@ -32,28 +33,27 @@ class TestWeights:
 
 
 class TestNoRating:
-    def test_rating_and_popularity_are_dropped(self):
+    def test_missing_rating_uses_the_prior_and_zero_reviews(self):
         result = score_place(features(rating=None, review_count=None), WEIGHTS, PARAMS)
         assert result.rating_used is False
-        assert result.components["rating"] is None and result.components["popularity"] is None
-        assert set(result.weights_used) == {"accessibility", "purpose", "age"}
+        assert result.components["rating"] == pytest.approx(rating_score(PARAMS.prior_mean, 0, PARAMS))
+        assert result.components["popularity"] == 0.0
+        assert set(result.weights_used) == set(WEIGHTS.as_dict())  # 항목을 빼지 않는다
 
-    def test_remaining_weights_are_renormalized_proportionally(self):
+    def test_weights_are_not_renormalized(self):
         result = score_place(features(rating=None, review_count=None), WEIGHTS, PARAMS)
-        assert sum(result.weights_used.values()) == pytest.approx(1.0)
-        # 0.25 : 0.20 : 0.15 → 합 0.60 기준으로 비례 확대
-        assert result.weights_used["accessibility"] == pytest.approx(0.25 / 0.60)
-        assert result.weights_used["purpose"] == pytest.approx(0.20 / 0.60)
-        assert result.weights_used["age"] == pytest.approx(0.15 / 0.60)
+        assert result.weights_used == WEIGHTS.as_dict()
 
-    def test_perfect_place_scores_one_even_without_rating(self):
-        perfect = features(distance_m=0, purpose_fit=1.0, age_fit=1.0, rating=None, review_count=None)
-        assert score_place(perfect, WEIGHTS, PARAMS).score == pytest.approx(1.0)
+    def test_unrated_place_never_outranks_an_equal_place_with_a_good_rating(self):
+        base = dict(distance_m=200, purpose_fit=0.8, age_fit=0.5)
+        unrated = score_place(features(rating=None, review_count=None, **base), WEIGHTS, PARAMS).score
+        rated = score_place(features(rating=4.3, review_count=120, **base), WEIGHTS, PARAMS).score
+        assert unrated < rated
 
-    def test_score_is_weighted_sum_of_remaining_components(self):
+    def test_score_is_weighted_sum_with_prior_filled_in(self):
         f = features(distance_m=250, purpose_fit=0.6, age_fit=0.3, rating=None, review_count=None)
         result = score_place(f, WEIGHTS, PARAMS)
-        expected = (0.25 * 0.5 + 0.20 * 0.6 + 0.15 * 0.3) / 0.60
+        expected = (0.25 * 0.5 + 0.25 * rating_score(PARAMS.prior_mean, 0, PARAMS) + 0.15 * 0.0 + 0.20 * 0.6 + 0.15 * 0.3)
         assert result.score == pytest.approx(expected)
 
     def test_rating_without_review_count_counts_as_missing(self):

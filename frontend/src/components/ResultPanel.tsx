@@ -6,7 +6,7 @@ import { routeKey, type RouteEntries, type RouteEntry } from '../routes'
 import type { ParticipantTravel, Place, RecommendResponse, Region, Route } from '../types'
 import { kakaoPlaceUrl } from '../links'
 import { legColor } from '../map/geometry'
-import { lineLabel } from '../routeFormat'
+import { fitMinutes, lineLabel } from '../routeFormat'
 import RouteTimeline, { LineBadge, type TimelinePlay } from './RouteTimeline'
 import ShareBar from './ShareBar'
 import StateMessage from './StateMessage'
@@ -64,16 +64,17 @@ function EstimateFlow({ route, color }: { route: Route; color: string }) {
 /** 네이버·구글 지도처럼 구간 시간 비율로 쪼갠 막대. 도보=회색, 지하철=호선 색, 버스=종류별 색. 추정은 점선 + "추정". */
 function SegmentBar({ route, widthPct }: { route: Route; widthPct: number }) {
   const estimated = route.source === 'estimate'
+  const fitted = fitMinutes(route) // 합 = 경로 상세의 총 소요시간
   return (
     <span className={`seg-bar${estimated ? ' estimated' : ''}`} style={{ width: `${widthPct}%` }} role="img"
-      aria-label={route.segments.map((s) => `${s.mode === 'WALK' ? '도보' : lineLabel(s)} ${Math.max(1, Math.round(s.minutes))}분`).join(', ')}>
+      aria-label={route.segments.map((s, i) => `${s.mode === 'WALK' ? '도보' : lineLabel(s)} ${fitted[i]}분`).join(', ')}>
       {route.segments.map((s, i) => {
-        const mins = `${Math.max(1, Math.round(s.minutes))}분`
+        const mins = `${fitted[i]}분`
         const name = s.mode === 'WALK' ? '도보' : lineLabel(s)
         const walk = s.mode === 'WALK'
         return (
           <span key={i} className={`seg-part ${walk ? 'walk' : ''}`} title={`${name} ${mins}`}
-            style={{ flexGrow: Math.max(s.minutes, 0.5), background: walk ? 'var(--walk-gray)' : legColor(s, '#888'), color: walk ? '#333' : (s.lineTextColor ?? '#fff') }}>
+            style={{ flexGrow: fitted[i], background: walk ? 'var(--walk-gray)' : legColor(s, '#888'), color: walk ? '#333' : (s.lineTextColor ?? '#fff') }}>
             <span className="seg-full">{name} {mins}</span>
             <span className="seg-short">{mins}</span>
           </span>
@@ -82,6 +83,11 @@ function SegmentBar({ route, widthPct }: { route: Route; widthPct: number }) {
       {estimated && <em className="seg-est">추정</em>}
     </span>
   )
+}
+
+/** 참여자 이동시간으로 화면에 보이는 값: 경로 상세를 불러왔으면 그 실제 소요시간, 아니면 2단계 값 */
+function shownMinutes(p: ParticipantTravel, entry: RouteEntry | undefined): number {
+  return entry?.status === 'ok' && entry.route.source !== 'estimate' ? entry.route.totalMinutes : p.minutes
 }
 
 interface DetailProps {
@@ -218,7 +224,7 @@ function TravelBars({
                 <span className="bar-track">
                   {(() => {
                     const e = routes[routeKey(region.station.id, i)]
-                    const widthPct = (p.minutes / maxMinutes) * 100
+                    const widthPct = (shownMinutes(p, e) / maxMinutes) * 100
                     return e?.status === 'ok' && e.route.source !== 'estimate' ? (
                       <SegmentBar route={e.route} widthPct={widthPct} />
                     ) : (
@@ -232,7 +238,7 @@ function TravelBars({
                   })()}
                 </span>
                 <span className="bar-value">
-                  {fmt(p.minutes)}분{p.is_estimated && <em className="badge">추정</em>}
+                  {fmt(shownMinutes(p, routes[routeKey(region.station.id, i)]))}분{p.is_estimated && <em className="badge">추정</em>}
                 </span>
                 <span className="route-cta" aria-hidden="true">{open ? '경로 닫기 ▴' : '경로 보기 ›'}</span>
               </button>
@@ -267,7 +273,7 @@ const KIND_ICONS = { meal: Utensils, cafe: Coffee, drink: Beer }
 /** 선정 이유를 짧은 태그로: "역 3분", "평점 높음", "리뷰 많음" */
 function reasonTags(place: Place): string[] {
   const tags = [`역 ${Math.max(1, Math.round(place.distance_m / 67))}분`]
-  if (place.rating != null && place.rating >= 4.0) tags.push('평점 높음')
+  if (place.rating != null && place.rating >= 4.0 && (place.review_count ?? 0) >= 20) tags.push('평점 높음') // 리뷰가 적으면 높은 평점을 믿기 어렵다
   if ((place.review_count ?? 0) >= 100) tags.push('리뷰 많음')
   if (place.rating == null) tags.push('평점 정보 없음')
   return tags
@@ -336,7 +342,7 @@ export default function ResultPanel({
   onToggleLive,
 }: Props) {
   const region = data.regions[selectedRegion]
-  const maxMinutes = Math.max(...data.regions.flatMap((r) => r.participants.map((p) => p.minutes)))
+  const maxMinutes = Math.max(...data.regions.flatMap((r) => r.participants.map((p) => p.minutes)), ...Object.values(routes).map((e) => (e.status === 'ok' ? e.route.totalMinutes : 0)))
   const purposeLabel = PURPOSE_OPTIONS.find((o) => o.value === data.meta.purpose)?.label ?? ''
   const hasEstimate = data.regions.some((r) => r.participants.some((p) => p.is_estimated))
   const { phase2, travel_source: travelSource } = data.meta

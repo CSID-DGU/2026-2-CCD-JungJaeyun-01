@@ -12,7 +12,7 @@ export function realtimeQuery(seg: RouteSegment): RealtimeQuery | null {
   if (!name) return null
   if (seg.mode === 'SUBWAY') {
     const next = seg.intermediateStops?.[0] ?? (seg.stopCount === 1 ? seg.to : null)
-    return { type: 'subway', station: name, line: seg.lineName, headsign: seg.headsign, next }
+    return { type: 'subway', station: name, line: seg.lineName, headsign: seg.realtime?.headsign ?? seg.headsign, next }
   }
   if (seg.mode === 'BUS' && board?.lat != null && board.lng != null) {
     return { type: 'bus', stop: name, line: seg.lineName, lat: board.lat, lng: board.lng }

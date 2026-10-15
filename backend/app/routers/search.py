@@ -24,7 +24,7 @@ class PlaceHitOut(BaseModel):
 
 @lru_cache
 def get_place_lookup_service() -> PlaceLookupService:
-    # USE_MOCK과 관계없이 항상 실제 카카오 API를 사용한다.
+    # mock 없이 항상 실제 카카오 API를 사용한다.
     return KakaoPlaceLookupService(settings.KAKAO_REST_API_KEY)
 
 

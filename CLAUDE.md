@@ -38,9 +38,9 @@ meetup-recommender/
 - 각 인터페이스마다 **mock 구현**과 **실제 구현**을 둔다.
   - 예: `RouteProvider` → `GoogleRouteProvider`, `OdsayRouteProvider` (경로 API의 mock 역할은 `ROUTE_MODE=replay`가 한다)
   - 예: `PlaceService` → `MockPlaceService`, `KakaoPlaceService`
-- 환경변수 `USE_MOCK=true/false`로 구현을 전환한다 (`app.settings.USE_MOCK`). 라우터·점수 계산 코드는 구현체가 아니라 인터페이스에만 의존한다.
+- 환경변수 `MOCK_PLACES` / `MOCK_RATINGS` / `MOCK_ROUTES`(각각 true/false, 기본 false)로 API별 mock을 전환하지만 **mock은 pytest에서만** 쓴다 — 실행 중 켜져 있으면 서버가 시작되지 않는다 (`app.settings`). 평점을 못 받으면 가짜 평점을 만들지 않고 "평점 정보 없음"으로 표시한다. 라우터·점수 계산 코드는 구현체가 아니라 인터페이스에만 의존한다.
 - mock 구현은 API 키 없이도 전체 흐름이 동작하도록 현실적인 고정 데이터를 반환한다.
-- 예외: 출발지 자동완성 `GET /api/search/places`(`services/place_lookup.py`)는 mock 없이 `USE_MOCK`과 관계없이 항상 실제 카카오 키워드 검색을 쓴다.
+- 예외: 출발지 자동완성 `GET /api/search/places`(`services/place_lookup.py`)는 mock 없이 항상 실제 카카오 키워드 검색을 쓴다.
 - 경로 API 호출은 **2단계 구조**를 지킨다. 1단계는 API 없이 지하철 그래프(`app/subway.py`)로 후보를 점수화하고, 2단계는 1단계 상위 `SHORTLIST_SIZE`(기본 8)곳 — 지하철 그래프에는 버스가 없어서 버스가 유리한 지역이 탈락하지 않도록 최종 3곳보다 넓게 — 을 `computeRouteMatrix`(버스 포함 모든 대중교통 수단 허용)로 **검색당 최대 1회** 확인하고, 그 실제 값으로 RegionScore를 다시 계산해 최종 3곳을 정한다. 1단계 순위와 달라진 지역은 로그로 남긴다. 상세 경로(`computeRoutes`)는 사용자가 참여자 이름을 누를 때(`POST /api/route`)만 호출한다. 이 호출 횟수를 늘리는 변경은 테스트(`test_recommend_api.py`의 호출 횟수 테스트)가 깨지도록 되어 있다.
 - 경로 프로바이더는 `app/providers/`의 `RouteProvider`(matrix/route)를 구현한다. 기본 `ROUTE_PROVIDER=google`, ODsay(`providers/odsay.py`)는 기본 비활성화다. 프론트는 공통 경로 스키마(`app/route_model.py`: `totalMinutes, transfers, segments[{mode, lineName, lineColor, from, to, minutes, path}], source`)만 안다. 새 경로 API는 이 형식으로 변환해서 붙인다.
 - `ROUTE_MODE`: `live`(기본: 저장본 → 7일 캐시 → 없으면 호출 후 저장, 하루 `daily_call_limit` 상한) | `record`(호출 + `backend/fixtures/google/` 저장) | `replay`(저장본만·호출 0, 테스트 전용). 실제 호출 테스트는 반드시 호출 수를 먼저 계산해서 알린다.
@@ -61,7 +61,7 @@ meetup-recommender/
 
 ## 실행 방법
 
-처음 한 번: 루트에서 `.env.example`을 `.env`로 복사하고 키를 채운다 (`USE_MOCK=true`면 키 없이 실행 가능).
+처음 한 번: 루트에서 `.env.example`을 `.env`로 복사하고 키를 채운다 (`MOCK_*`는 pytest 전용이라 실행에는 실제 키가 필요하다).
 
 ### 백엔드 (http://localhost:8000)
 

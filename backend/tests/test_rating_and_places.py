@@ -156,3 +156,20 @@ def test_purpose_mapping_in_config():
     assert purposes["cafe"].category_code == "CE7"
     assert (purposes["drink"].category_code, purposes["drink"].category_name_contains) == ("FD6", "술집")
     assert load_place_config().age.is_assumed is True
+
+
+def test_default_services_are_real_not_mock(monkeypatch):
+    from app import settings
+    from app.services import get_place_service, get_rating_service
+    from app.services.place_search import CachedPlaceService
+    from app.services.rating import GoogleRatingService
+    monkeypatch.setattr(settings, "MOCK_PLACES", False)
+    monkeypatch.setattr(settings, "MOCK_RATINGS", False)
+    get_place_service.cache_clear()
+    get_rating_service.cache_clear()
+    try:
+        assert isinstance(get_place_service(), CachedPlaceService)
+        assert isinstance(get_rating_service(), GoogleRatingService)
+    finally:
+        get_place_service.cache_clear()
+        get_rating_service.cache_clear()

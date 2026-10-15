@@ -36,5 +36,5 @@ app.include_router(auth.share_router)
 @app.get("/health")
 @app.get("/api/health")  # 프론트 프록시(/api/*)로 접근할 때 쓰는 경로
 def health() -> dict:
-    return {"status": "ok", "use_mock": settings.USE_MOCK, "route_provider": settings.ROUTE_PROVIDER,
+    return {"status": "ok", "mock": {"places": settings.MOCK_PLACES, "ratings": settings.MOCK_RATINGS, "routes": settings.MOCK_ROUTES}, "route_provider": settings.ROUTE_PROVIDER,
             "route_mode": settings.ROUTE_MODE}

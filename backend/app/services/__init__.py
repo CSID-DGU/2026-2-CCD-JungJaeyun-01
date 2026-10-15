@@ -2,7 +2,7 @@
 
 각 외부 API(ODsay, 카카오 로컬 등)는 이 패키지 아래에
 인터페이스 + mock 구현 + 실제 구현으로 분리하고,
-settings.USE_MOCK 값으로 어떤 구현을 쓸지 선택한다.
+settings.MOCK_PLACES / MOCK_RATINGS / MOCK_ROUTES 값으로 어떤 구현을 쓸지 선택한다 (mock은 pytest 전용).
 """
 
 from functools import lru_cache
@@ -53,9 +53,9 @@ def get_route_provider():
 
 @lru_cache
 def get_place_service() -> PlaceService:
-    """USE_MOCK=true면 고정 장소 데이터, false면 카카오 카테고리 검색 + SQLite 캐시."""
+    """기본: 카카오 카테고리 검색 + SQLite 캐시. MOCK_PLACES=true(pytest 전용)면 고정 장소 데이터."""
     cfg = load_place_config()
-    if settings.USE_MOCK:
+    if settings.MOCK_PLACES:
         return MockPlaceService(cfg.radius_m, cfg.max_results)
     kakao = KakaoPlaceService(settings.KAKAO_REST_API_KEY, cfg.radius_m, cfg.max_results)
     return CachedPlaceService(kakao, PlacesCache(settings.PLACES_CACHE_PATH),
@@ -64,8 +64,8 @@ def get_place_service() -> PlaceService:
 
 @lru_cache
 def get_rating_service() -> RatingService:
-    """USE_MOCK=true면 가짜 평점, false면 구글 Places(캐시 + 일일 호출 상한)."""
-    if settings.USE_MOCK:
+    """기본: 구글 Places(캐시 + 일일 호출 상한). 못 받으면 평점 없음. MOCK_RATINGS=true(pytest 전용)면 가짜 평점."""
+    if settings.MOCK_RATINGS:
         return MockRatingService()
     g = load_place_config().google
     return GoogleRatingService(

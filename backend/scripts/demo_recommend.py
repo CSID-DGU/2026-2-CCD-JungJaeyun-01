@@ -4,7 +4,7 @@
     .venv\\Scripts\\python scripts/demo_recommend.py
 
 경로 API는 ROUTE_PROVIDER / ROUTE_MODE(.env)를 따른다. 기본 ROUTE_MODE=replay는 저장본이 없으면 1단계 추정값만 쓴다.
-장소·평점은 USE_MOCK 값을 따른다.
+장소·평점·경로 모두 실제 API(캐시 우선, 하루 상한)를 쓴다.
 """
 
 import sys
@@ -29,7 +29,7 @@ PARTICIPANTS = [
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     provider = get_route_provider()
-    print(f"USE_MOCK={settings.USE_MOCK} | 경로 {provider.name}/{settings.ROUTE_MODE}")
+    print(f"경로 {provider.name}/{settings.ROUTE_MODE}")
     response = recommend_with_places(
         RegionRecommendRequest(participants=PARTICIPANTS, purpose="meal"),
         get_estimator(), provider, get_place_service(), get_rating_service(),

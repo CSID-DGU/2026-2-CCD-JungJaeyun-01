@@ -1,6 +1,8 @@
 """환경변수 로딩. 루트의 .env를 읽는다."""
 
+import logging
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,7 +17,15 @@ def _as_bool(value: str | None, default: bool) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
-USE_MOCK: bool = _as_bool(os.getenv("USE_MOCK"), default=True)
+# mock은 pytest에서만 쓴다. 실제 실행에서 켜져 있으면 화면에 가짜 데이터가 섞이므로 시작을 막는다.
+MOCK_PLACES: bool = _as_bool(os.getenv("MOCK_PLACES"), default=False)    # 장소 검색(카카오)
+MOCK_RATINGS: bool = _as_bool(os.getenv("MOCK_RATINGS"), default=False)  # 평점(구글 Places)
+MOCK_ROUTES: bool = _as_bool(os.getenv("MOCK_ROUTES"), default=False)    # 경로(구글 Routes): true면 저장본(fixtures)만 읽는다
+_UNDER_PYTEST = "PYTEST_VERSION" in os.environ or "pytest" in sys.modules
+if (MOCK_PLACES or MOCK_RATINGS or MOCK_ROUTES) and not _UNDER_PYTEST:
+    raise RuntimeError("MOCK_PLACES / MOCK_RATINGS / MOCK_ROUTES는 pytest에서만 쓸 수 있어요. .env에서 false로 바꾸거나 지워 주세요.")
+if os.getenv("USE_MOCK"):
+    logging.getLogger(__name__).warning("USE_MOCK은 더 이상 쓰지 않아요. MOCK_PLACES / MOCK_RATINGS / MOCK_ROUTES로 나뉘었습니다.")
 KAKAO_REST_API_KEY: str = os.getenv("KAKAO_REST_API_KEY", "")
 # 카카오맵 JavaScript 키: 프론트가 직접 쓰는 키이며, 백엔드는 지도 로드 실패 원인 진단에만 쓴다.
 KAKAO_JS_KEY: str = os.getenv("VITE_KAKAO_JS_KEY", "")
@@ -24,7 +34,7 @@ GOOGLE_PLACES_API_KEY: str = os.getenv("GOOGLE_PLACES_API_KEY", "")
 
 # 경로 API 선택과 호출 모드. 키는 백엔드에서만 쓴다.
 ROUTE_PROVIDER: str = os.getenv("ROUTE_PROVIDER", "google").strip().lower()   # google | odsay (odsay는 기본 비활성화)
-ROUTE_MODE: str = os.getenv("ROUTE_MODE", "live").strip().lower()             # live(기본: 캐시 우선, 없으면 호출 후 저장) | record | replay(테스트용)
+ROUTE_MODE: str = "replay" if MOCK_ROUTES else os.getenv("ROUTE_MODE", "live").strip().lower()             # live(기본: 캐시 우선, 없으면 호출 후 저장) | record | replay(테스트용)
 GOOGLE_ROUTES_KEY: str = os.getenv("GOOGLE_ROUTES_KEY", "")
 
 # 경로 응답 캐시와 하루 호출 수 집계(SQLite). .gitignore의 *.sqlite3 규칙으로 커밋되지 않는다.

@@ -53,7 +53,9 @@ cp .env.example .env
 | `ROUTE_MODE` | Google 호출 방식: `live`(기본) \| `record` \| `replay`(테스트용) — 아래 "경로 API 호출 구조" 참고 | - |
 | `ODSAY_API_KEY` | `ROUTE_PROVIDER=odsay`일 때만 사용 | [ODsay LAB](https://lab.odsay.com) → 애플리케이션 등록 → API 키 |
 | `GOOGLE_PLACES_API_KEY` | (선택) 평점·리뷰 수 (백엔드 전용) | [Google Cloud Console](https://console.cloud.google.com) → **Places API (New)** 사용 설정 → 사용자 인증 정보 → API 키 |
-| `USE_MOCK` | `true`: 장소 검색·평점을 가짜 데이터로 대체 / `false`: 실제 API 호출 (경로 API는 `ROUTE_MODE`가 따로 정한다) | - |
+| `MOCK_PLACES` | 장소 검색(카카오)을 가짜 데이터로 대체. **pytest 전용**, 기본 `false` (카카오는 무료라 항상 실제 호출) | - |
+| `MOCK_RATINGS` | 평점(구글 Places)을 가짜로 대체. **pytest 전용**, 기본 `false` (실제 호출, 하루 상한 `place.yaml`). 평점을 못 받은 장소는 "평점 정보 없음"으로 표시 | - |
+| `MOCK_ROUTES` | 경로(구글 Routes)를 저장본(`fixtures/`)만 읽도록 고정. **pytest 전용**, 기본 `false` (캐시 우선 + 하루 상한 `routes.yaml`) | - |
 
 카카오 설정에서 꼭 확인할 것:
 
@@ -65,7 +67,7 @@ cp .env.example .env
 참고:
 
 - 구글 Places는 결제 계정 연결이 필요하고 호출마다 과금됩니다. 키가 없으면 평점 없이 동작하며(평점 항목을 빼고 가중치 재정규화), 하루 호출 상한은 `backend/config/place.yaml`의 `google.daily_limit`(기본 100)입니다.
-- `USE_MOCK=true`여도 출발지 자동완성(`GET /api/search/places`)은 항상 실제 카카오 API를 사용하므로 `KAKAO_REST_API_KEY`가 필요합니다.
+- 장소·평점·경로 모두 실제 API를 씁니다. `MOCK_*`가 켜진 채로 서버를 실행하면 가짜 데이터가 화면에 섞이므로 시작 자체를 막습니다 (옛 `USE_MOCK`은 더 이상 읽지 않고 경고만 냅니다).
 - Google Routes 키는 프론트에 노출하지 않습니다. 키 제한을 쓴다면 API 제한을 Routes API로 두고, IP 제한을 쓸 때는 서버 IP를 등록하세요.
 - Google Maps Platform 약관은 응답 저장·캐시에 제한을 둘 수 있어요. 7일 캐시와 `backend/fixtures/google/` 저장본은 개발·발표용으로 쓰고, 공개 배포 전에 약관을 확인하세요.
 
@@ -147,7 +149,7 @@ cd backend
 python scripts/test_apis.py                 # 카카오 · ODsay · 구글 Places 각 1회
 python scripts/probe_google_routes.py       # Google Routes 품질 확인 (경로 3개, --save로 테스트 픽스처 저장)
 python scripts/build_subway_network.py      # 지하철 그래프 다시 만들기
-python scripts/demo_recommend.py            # 홍대입구·잠실·노원 추천 데모 (USE_MOCK 값을 따름)
+python scripts/demo_recommend.py            # 홍대입구·잠실·노원 추천 데모 (실제 API, 캐시 우선)
 ```
 
 ## 주요 설정 파일 (`backend/config/`)

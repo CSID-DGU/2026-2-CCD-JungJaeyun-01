@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { BRAND } from '../brand'
 import { markIntroSeen } from '../introState'
+import Foot from './Foot'
 import { PinMark } from './Logo'
 
 const TOTAL_MS = 2600
@@ -37,15 +38,6 @@ function makePrints(w: number, h: number): Print[] {
     }
   }
   return prints
-}
-
-function Foot() {
-  return (
-    <svg viewBox="0 0 24 34" width="22" height="30" aria-hidden="true">
-      <ellipse cx="12" cy="11" rx="6.5" ry="9.5" fill="currentColor" />
-      <ellipse cx="12" cy="27" rx="5" ry="5.5" fill="currentColor" />
-    </svg>
-  )
 }
 
 /**

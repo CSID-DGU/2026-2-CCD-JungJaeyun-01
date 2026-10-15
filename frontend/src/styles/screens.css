@@ -1,0 +1,202 @@
+/* 입력·결과·지도 화면에 MEET PICK 디자인을 입힌다 (동작·구조는 그대로). */
+.panel { --panel-pad: 24px; }
+@media (max-width: 900px) { .panel { --panel-pad: 16px; } }
+
+/* ---------------- 단계 표시 ---------------- */
+.stepper { display: flex; align-items: center; gap: 0; padding: 0; margin: 18px 0 8px; list-style: none; }
+.step { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; font-weight: 600; color: var(--gray-400); white-space: nowrap; }
+.step:not(:last-child)::after { content: ''; flex: 1; height: 2px; margin: 0 8px; border-radius: 2px; background: var(--gray-200); }
+.step-dot { width: 24px; height: 24px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--gray-200); color: var(--gray-500); font-size: 12px; font-weight: 800; transition: background 0.2s ease, transform 0.2s var(--ease-pop); }
+.step.done { color: var(--gray-700); }
+.step.done .step-dot { background: var(--brand); color: #fff; }
+.step.done:not(:last-child)::after { background: var(--brand); }
+.step.current { color: var(--brand-dark); }
+.step.current .step-dot { background: #fff; color: var(--brand); box-shadow: 0 0 0 2px var(--brand); transform: scale(1.12); }
+
+/* ---------------- 참여자 카드 ---------------- */
+.count-badge { display: inline-block; margin-left: 6px; padding: 1px 9px; border-radius: var(--radius-pill); background: var(--brand-soft); color: var(--brand-dark); font-size: 13px; font-weight: 700; vertical-align: middle; }
+.participant-card { padding: 16px; margin-top: 12px; border-radius: var(--radius-lg); }
+.card-head .dot { display: none; }
+.avatar { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; font-size: 15px; font-weight: 800; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); border: 2px solid #fff; }
+.card-head { align-items: center; gap: 10px; }
+.with-icon { position: relative; }
+.with-icon .field-icon { position: absolute; left: 12px; top: 20px; transform: translateY(-50%); z-index: 1; pointer-events: none; }
+.with-icon .autocomplete input { padding-left: 38px; }
+.add-card { width: 100%; margin-top: 12px; padding: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 2px dashed var(--gray-300); border-radius: var(--radius-lg); background: transparent; color: var(--gray-500); font-weight: 700; cursor: pointer; white-space: nowrap; transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.12s ease; }
+.add-card:hover:not(:disabled) { border-color: var(--brand); color: var(--brand-dark); background: var(--brand-soft); }
+.add-card:active:not(:disabled) { transform: scale(0.98); }
+.add-card:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ---------------- 모임 목적 칩 ---------------- */
+.purpose-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.purpose-chip { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px; border: 2px solid var(--gray-200); border-radius: var(--radius-lg); background: #fff; color: var(--gray-700); font-weight: 700; cursor: pointer; white-space: nowrap; box-shadow: var(--shadow-sm); transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; }
+.purpose-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.purpose-chip:active { transform: scale(0.97); }
+.purpose-chip.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); box-shadow: 0 0 0 3px var(--brand-ring); }
+.purpose-chip:focus-visible { outline: 3px solid var(--brand-ring); outline-offset: 2px; }
+
+/* ---------------- 하단 고정 바 (추천 버튼 / 공유 버튼) ---------------- */
+.submit-bar, .share-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin: 20px calc(var(--panel-pad) * -1) calc(var(--panel-pad) * -1);
+  padding: 12px var(--panel-pad) calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--gray-200);
+  box-shadow: 0 -6px 18px rgba(28, 33, 43, 0.07);
+}
+.submit-bar .btn.block { height: 52px; font-size: 17px; border-radius: 14px; }
+.submit-bar .btn.primary:disabled { background: var(--gray-300); box-shadow: none; color: #fff; opacity: 1; }
+.submit-hint { margin: 0 0 8px; text-align: center; font-size: 13px; color: var(--gray-500); }
+.share-bar .share-buttons { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+.share-bar .btn { height: 48px; border-radius: 14px; }
+.share-bar .btn.kakao { box-shadow: 0 4px 12px rgba(254, 229, 0, 0.5); }
+.share-status { margin: 0 0 8px; text-align: center; }
+.share-bar { display: flex; flex-direction: column-reverse; }
+
+/* ---------------- 로딩 (인트로 발자국 재사용) ---------------- */
+.loading-walk { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; color: var(--gray-500); }
+.walk-trail { display: flex; align-items: center; gap: 14px; height: 60px; color: var(--brand); }
+.walk-foot { display: block; opacity: 0.15; animation: walk-step 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * 0.25s); }
+.walk-foot.left { margin-top: -14px; }
+.walk-foot.right { margin-top: 14px; }
+.walk-foot svg { display: block; transform: rotate(90deg); }
+@keyframes walk-step { 0%, 100% { opacity: 0.15; transform: scale(0.8); } 25%, 55% { opacity: 1; transform: scale(1); } }
+.loading-msg { font-size: 20px; font-weight: 800; color: var(--gray-900); animation: msg-in 0.4s ease both; }
+@keyframes msg-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------------- 빈 상태·에러 ---------------- */
+.state-message { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 16px; text-align: center; border-radius: var(--radius-lg); background: #fff; border: 1px dashed var(--gray-300); }
+.state-message strong { font-size: 16px; font-weight: 800; color: var(--gray-900); }
+.state-message p { color: var(--gray-500); font-size: 14px; line-height: 1.5; word-break: keep-all; }
+.state-art { position: relative; width: 72px; height: 72px; display: grid; place-items: center; color: var(--brand); }
+.state-blob { position: absolute; inset: 0; border-radius: 58% 42% 55% 45% / 48% 56% 44% 52%; background: var(--brand-soft); transform: rotate(-8deg); }
+.state-art svg { position: relative; }
+.state-message.error { border-color: #fecdca; background: var(--danger-soft); }
+.state-message.error .state-art { color: var(--danger); }
+.state-message.error .state-blob { background: #fee4e2; }
+.map-note.error { background: rgba(248, 249, 251, 0.94); }
+.map-note.error .state-message { max-width: 340px; }
+.alert.error { display: none; }
+
+/* ---------------- 결과: 탭과 1위 강조 ---------------- */
+.tabs { grid-template-columns: 1.5fr 1fr 1fr; align-items: stretch; }
+.tabs button { padding: 8px 4px; font-size: 12px; }
+.tabs button:first-child { padding: 12px 6px; }
+.tabs button:first-child .tab-rank { font-size: 13px; }
+.tabs button:first-child .tab-name { font-size: 15px; font-weight: 800; }
+.tab-rank { display: inline-flex; align-items: center; gap: 4px; }
+.region.hero { background: linear-gradient(180deg, #fff 0%, var(--brand-soft) 160%); border: 2px solid var(--brand); box-shadow: 0 8px 24px rgba(255, 90, 78, 0.18); }
+.region.hero .region-title h2 { font-size: 26px; }
+.pick-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 3px 10px 3px 8px; border-radius: var(--radius-pill); background: var(--brand); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; vertical-align: middle; box-shadow: var(--shadow-brand); animation: badge-pop 0.5s var(--ease-pop) both; }
+@keyframes badge-pop { from { transform: scale(0.3) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 말풍선 */
+.reason.bubble { position: relative; margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: #fff; border: 2px solid var(--brand-soft); color: var(--gray-700); line-height: 1.5; box-shadow: var(--shadow-sm); }
+.region.hero .reason.bubble { border-color: #ffd0cb; }
+.reason.bubble::before, .reason.bubble::after { content: ''; position: absolute; left: 22px; border: 9px solid transparent; }
+.reason.bubble::before { top: -19px; border-bottom-color: #ffd0cb; }
+.reason.bubble::after { top: -16px; border-bottom-color: #fff; }
+
+/* 이동시간 막대: 처음 보일 때 왼쪽에서 차오른다 */
+.bars .bar-fill, .bars .seg-bar { transform-origin: left center; animation: bar-grow 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.bars li:nth-child(2) .bar-fill, .bars li:nth-child(2) .seg-bar { animation-delay: 0.12s; }
+.bars li:nth-child(3) .bar-fill, .bars li:nth-child(3) .seg-bar { animation-delay: 0.24s; }
+.bars li:nth-child(n + 4) .bar-fill, .bars li:nth-child(n + 4) .seg-bar { animation-delay: 0.36s; }
+@keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* 평균/최대/편차 카드 */
+.metrics > div { padding: 12px 8px; border-radius: 14px; }
+.metrics dt { display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 600; }
+.metrics dt svg { color: var(--brand); }
+.metrics > div:nth-child(2) dt svg { color: var(--accent); }
+.metrics > div:nth-child(3) dt svg { color: var(--ok); }
+.metrics dd { font-size: 18px; margin-top: 2px; }
+
+/* ---------------- 장소 카드 ---------------- */
+.places ul { gap: 10px; }
+.place-card { border-radius: var(--radius-lg); }
+.place-main { grid-template-columns: 48px 1fr auto; gap: 12px; padding: 14px; }
+.place-icon { position: relative; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 16px; color: #fff; background: var(--place); }
+.place-icon.meal { background: #ff8a3d; }
+.place-icon.cafe { background: #9a6b46; }
+.place-icon.drink { background: #7c5cff; }
+.place-icon .place-rank { position: absolute; top: -6px; left: -6px; width: 20px; height: 20px; background: var(--gray-900); border: 2px solid #fff; font-size: 11px; }
+.place-body { gap: 3px; }
+.place-body strong { font-size: 15px; font-weight: 800; }
+.place-rating { display: flex; align-items: center; gap: 3px; color: #f59e0b; font-weight: 700; }
+.place-rating small { color: var(--gray-500); font-weight: 400; }
+.place-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tag { padding: 2px 8px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent-dark); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.tag:first-child { background: var(--brand-soft); color: var(--brand-dark); }
+.place-link { padding: 0 14px 12px 74px; color: var(--accent-dark); font-weight: 600; }
+.place-score { color: var(--brand-dark); }
+
+/* ---------------- 지도 마커: 색 아바타 핀 / 순위 숫자 핀 / 카테고리 아이콘 핀 ---------------- */
+.pin.pin-origin, .pin.pin-region, .pin.pin-region.active, .pin.pin-place, .pin.pin-place.active {
+  width: var(--d);
+  height: calc(var(--d) + 9px);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #fff;
+  display: block;
+}
+.pin-origin { --d: 36px; --pin-color: var(--brand); }
+.pin-region { --d: 38px; --pin-color: var(--gray-900); }
+.pin-region.active { --pin-color: var(--brand); }
+.pin-place { --d: 32px; --pin-color: var(--place); }
+.pin .pin-body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  width: 100%;
+  height: var(--d);
+  display: grid;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--pin-color);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  font-weight: 800;
+  font-size: calc(var(--d) * 0.42);
+  transform-origin: 50% 100%;
+  transition: transform 0.2s var(--ease-pop);
+}
+.pin::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc(var(--d) - 8px);
+  width: 14px;
+  height: 14px;
+  background: var(--pin-color);
+  transform: translateX(-50%) rotate(45deg);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s var(--ease-pop);
+}
+.pin.pin-place.active .pin-body, .pin.pin-region.active .pin-body { transform: scale(1.2); }
+.pin.pin-place.active::before, .pin.pin-region.active::before { transform: translateX(-50%) rotate(45deg) scale(1.2); }
+.pin.pulse::after { content: none; }
+.pin.pulse .pin-body::after { content: ''; position: absolute; inset: -5px; border: 3px solid var(--brand); border-radius: 50%; pointer-events: none; animation: pin-pulse 850ms ease-out 1 both; }
+.pin .pin-body svg { display: block; }
+.map-toggle { border-radius: 999px; font-weight: 700; }
+
+@media (max-width: 420px) {
+  .step-label { font-size: 12px; }
+  .purpose-chip { padding: 14px 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bars .bar-fill, .bars .seg-bar, .walk-foot, .loading-msg, .pick-badge { animation: none; }
+  .walk-foot { opacity: 0.8; }
+  .pin .pin-body, .pin::before, .step-dot, .purpose-chip, .add-card { transition: none; }
+}
+
+/* 선택이 끝난 출발지 입력은 차분하게 (붉은색은 오류에만 쓴다) */
+.autocomplete input.selected { background: var(--accent-soft); border-color: var(--accent); color: var(--gray-900); }
+.autocomplete input.selected:focus-visible { outline-color: rgba(59, 108, 255, 0.28); }
+.state-message { scroll-margin-bottom: 110px; }

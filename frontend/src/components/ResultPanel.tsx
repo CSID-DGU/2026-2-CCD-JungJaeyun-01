@@ -1,3 +1,5 @@
+import { Beer, Clock, Coffee, Crown, MapPinOff, Scale, Star, TriangleAlert, TrendingUp, Utensils } from 'lucide-react'
+import { placeKind } from '../categoryKind'
 import { PARTICIPANT_COLORS, PURPOSE_OPTIONS } from '../constants'
 import type { RouteSelection, SegmentFocus } from '../map/types'
 import { routeKey, type RouteEntries, type RouteEntry } from '../routes'
@@ -7,6 +9,7 @@ import { legColor } from '../map/geometry'
 import { lineLabel } from '../routeFormat'
 import RouteTimeline, { LineBadge, type TimelinePlay } from './RouteTimeline'
 import ShareBar from './ShareBar'
+import StateMessage from './StateMessage'
 
 interface Props {
   data: RecommendResponse
@@ -124,8 +127,7 @@ function RouteDetail({ entry, travel, index, color, origin, destinationName, mee
   if (entry.status === 'error') {
     return (
       <div className="route-summary guidance">
-        <p className="route-note">경로를 불러오지 못했어요</p>
-        <p className="route-hint">{entry.message}</p>
+        <StateMessage Icon={TriangleAlert} tone="error" title="경로를 불러오지 못했어요" role="alert">{entry.message}</StateMessage>
         {loadButton('실제 경로 다시 불러오기')}
       </div>
     )
@@ -199,7 +201,7 @@ function TravelBars({
           {routeSelection === 'all' ? '경로 숨기기' : '모두 보기'}
         </button>
       </div>
-      <ul className="bars" aria-label="참여자별 이동시간">
+      <ul className="bars" aria-label="참여자별 이동시간" key={region.station.id}>
         {region.participants.map((p, i) => {
           const open = routeSelection === 'all' || routeSelection === i
           return (
@@ -262,11 +264,27 @@ function TravelBars({
   )
 }
 
+const KIND_ICONS = { meal: Utensils, cafe: Coffee, drink: Beer }
+
+/** 선정 이유를 짧은 태그로: "역 3분", "평점 높음", "리뷰 많음" */
+function reasonTags(place: Place): string[] {
+  const tags = [`역 ${Math.max(1, Math.round(place.distance_m / 67))}분`]
+  if (place.rating != null && place.rating >= 4.0) tags.push('평점 높음')
+  if ((place.review_count ?? 0) >= 100) tags.push('리뷰 많음')
+  if (place.rating == null) tags.push('평점 정보 없음')
+  return tags
+}
+
 function PlaceCard({ place, selected, onSelect }: { place: Place; selected: boolean; onSelect: () => void }) {
+  const kind = placeKind(place)
+  const KindIcon = KIND_ICONS[kind]
   return (
     <li className={`place-card${selected ? ' selected' : ''}`}>
       <button type="button" className="place-main" onClick={onSelect} aria-pressed={selected}>
-        <span className="place-rank">{place.rank}</span>
+        <span className={`place-icon ${kind}`}>
+          <KindIcon size={22} strokeWidth={2.1} aria-hidden="true" />
+          <b className="place-rank">{place.rank}</b>
+        </span>
         <span className="place-body">
           <strong>{place.name}</strong>
           <span className="place-sub">
@@ -275,13 +293,18 @@ function PlaceCard({ place, selected, onSelect }: { place: Place; selected: bool
           <span className="place-rating">
             {place.rating != null ? (
               <>
-                ★ {place.rating.toFixed(1)} <small>(리뷰 {place.review_count?.toLocaleString()}개)</small>
+                <Star size={14} fill="currentColor" strokeWidth={0} aria-hidden="true" /> {place.rating.toFixed(1)}{' '}
+                <small>(리뷰 {place.review_count?.toLocaleString()}개)</small>
               </>
             ) : (
               <small>평점 정보 없음</small>
             )}
           </span>
-          <span className="place-reason">{place.reason}</span>
+          <span className="place-tags" title={place.reason}>
+            {reasonTags(place).map((t) => (
+              <span key={t} className="tag">{t}</span>
+            ))}
+          </span>
         </span>
         <span className="place-score" title="PlaceScore">
           {place.score.toFixed(2)}
@@ -351,9 +374,7 @@ export default function ResultPanel({
         </span>
       </div>
 
-      <ShareBar text={share.text} url={share.url} loggedIn={share.loggedIn} />
-
-      <div className="tabs" role="tablist" aria-label="추천 지역">
+      <div className="tabs" role="tablist" aria-label="추천 지역" data-count={data.regions.length}>
         {data.regions.map((r, i) => (
           <button
             key={r.station.id}
@@ -363,15 +384,18 @@ export default function ResultPanel({
             className={i === selectedRegion ? 'active' : ''}
             onClick={() => onSelectRegion(i)}
           >
-            <span className="tab-rank">{r.rank}위</span>
+            <span className="tab-rank">{r.rank === 1 && <Crown size={14} strokeWidth={2.4} aria-hidden="true" />}{r.rank}위</span>
             <span className="tab-name">{r.station.name}</span>
           </button>
         ))}
       </div>
 
-      <section className="region" role="tabpanel" aria-label={`${region.rank}위 ${region.station.name}`}>
+      <section className={`region${region.rank === 1 ? ' hero' : ''}`} role="tabpanel" aria-label={`${region.rank}위 ${region.station.name}`}>
         <div className="region-title">
-          <h2>{region.station.name}</h2>
+          <h2>
+            {region.station.name}
+            {region.rank === 1 && <span className="pick-badge"><Crown size={14} strokeWidth={2.4} aria-hidden="true" /> PICK</span>}
+          </h2>
           <span className="score" title="RegionScore (높을수록 좋음)">
             RegionScore <b>{region.score.toFixed(3)}</b>
           </span>
@@ -383,7 +407,7 @@ export default function ResultPanel({
             : `이동시간: ${travelSource === 'google' ? 'Google' : 'ODsay'} 실제 경로 기준 (후보 ${phase2.candidates}곳 중 최종 ${data.regions.length}곳)`}
         </p>
         {rankChange && <p className="rank-change">{rankChange}</p>}
-        <p className="reason">{region.reason}</p>
+        <p className="reason bubble">{region.reason}</p>
 
         <TravelBars
           region={region}
@@ -402,15 +426,15 @@ export default function ResultPanel({
 
         <dl className="metrics">
           <div>
-            <dt>평균</dt>
+            <dt><Clock size={16} aria-hidden="true" /> 평균</dt>
             <dd>{region.metrics.avg_minutes.toFixed(1)}분</dd>
           </div>
           <div>
-            <dt>최대</dt>
+            <dt><TrendingUp size={16} aria-hidden="true" /> 최대</dt>
             <dd>{region.metrics.max_minutes.toFixed(1)}분</dd>
           </div>
           <div>
-            <dt>편차</dt>
+            <dt><Scale size={16} aria-hidden="true" /> 편차</dt>
             <dd>{region.metrics.std_minutes.toFixed(1)}분</dd>
           </div>
         </dl>
@@ -419,7 +443,9 @@ export default function ResultPanel({
       <section className="places">
         <h3>이 지역 추천 장소 {region.places.length > 0 && `Top ${region.places.length}`}</h3>
         {region.places.length === 0 ? (
-          <p className="empty">조건에 맞는 장소를 찾지 못했어요.</p>
+          <StateMessage Icon={MapPinOff} title="이 근처엔 조건에 맞는 장소가 없어요">
+            다른 지역 탭을 눌러보거나, 모임 목적을 바꿔서 다시 추천받아 보세요.
+          </StateMessage>
         ) : (
           <ul>
             {region.places.map((p) => (
@@ -448,6 +474,8 @@ export default function ResultPanel({
           <p key={w}>※ {w}</p>
         ))}
       </footer>
+
+      <ShareBar text={share.text} url={share.url} loggedIn={share.loggedIn} />
     </div>
   )
 }

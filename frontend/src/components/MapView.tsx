@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { placeKind } from '../categoryKind'
 import { kakaoPlaceUrl } from '../links'
+import { kindIconSvg } from '../map/pinIcons'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { MapPinOff } from 'lucide-react'
 import { diagnoseKakaoMap } from '../api'
+import StateMessage from './StateMessage'
 import { loadKakaoMaps } from '../kakaoLoader'
 import { buildDrawable, routePoints } from '../map/geometry'
 import { MapMotion, computeFitTarget, prefersReducedMotion, type Padding } from '../map/motion'
@@ -9,6 +13,8 @@ import { RouteLayer } from '../map/routeLayer'
 import type { MotionRequest, RouteSelection, SegmentFocus, ViewMode } from '../map/types'
 import { routeKey, type RouteEntries } from '../routes'
 import type { LatLng, Place, Region } from '../types'
+
+const PLACE_COLORS = { meal: '#ff8a3d', cafe: '#9a6b46', drink: '#7c5cff' } as const
 
 export interface OriginMarker {
   name: string
@@ -173,19 +179,24 @@ export default function MapView(props: Props) {
       text: string,
       title: string,
       zIndex: number,
-      extra: { onClick?: () => void; color?: string } = {},
+      extra: { onClick?: () => void; color?: string; iconSvg?: string } = {},
     ) => {
+      // .pin(끝이 뾰족한 핀 모양 상자) 안의 .pin-body 원에 내용이 들어간다. 선택 시 커지는 효과는 .pin-body에만 준다.
       const el = document.createElement('div')
       el.className = `pin ${className}`
-      el.textContent = text
       el.title = title
-      if (extra.color) el.style.background = extra.color
+      const body = document.createElement('span')
+      body.className = 'pin-body'
+      if (extra.iconSvg) body.innerHTML = extra.iconSvg
+      else body.textContent = text
+      el.appendChild(body)
+      if (extra.color) el.style.setProperty('--pin-color', extra.color)
       if (extra.onClick) el.addEventListener('click', extra.onClick)
       const overlay = new kakao.maps.CustomOverlay({
         position: new kakao.maps.LatLng(pos.lat, pos.lng),
         content: el,
         xAnchor: 0.5,
-        yAnchor: 0.5,
+        yAnchor: 1,
         zIndex,
       })
       overlay.setMap(map.current)
@@ -223,7 +234,7 @@ export default function MapView(props: Props) {
           '',
           p.name,
           active ? 9 : 7,
-          { onClick: () => onSelectPlace(p.id) },
+          { onClick: () => onSelectPlace(p.id), iconSvg: kindIconSvg(placeKind(p), 16), color: PLACE_COLORS[placeKind(p)] },
         )
       })
     }
@@ -375,10 +386,7 @@ export default function MapView(props: Props) {
       {status === 'loading' && <div className="map-note">지도를 불러오는 중…</div>}
       {status === 'error' && (
         <div className="map-note error" role="alert">
-          <div>
-            <strong>지도를 표시할 수 없어요</strong>
-            <p>{errorMessage}</p>
-          </div>
+          <StateMessage Icon={MapPinOff} tone="error" title="지도를 불러오지 못했어요">{errorMessage}</StateMessage>
         </div>
       )}
     </div>

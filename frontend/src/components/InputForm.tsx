@@ -1,3 +1,4 @@
+import { Beer, Coffee, MapPin, Plus, SearchX, Utensils, type LucideIcon } from 'lucide-react'
 import { BRAND } from '../brand'
 import {
   AGE_OPTIONS,
@@ -9,7 +10,10 @@ import {
 import { seoulNowInput } from '../meeting'
 import type { AgeGroup, Purpose } from '../types'
 import type { FieldErrors, FormParticipant } from '../validate'
+import LoadingWalk from './LoadingWalk'
 import PlaceAutocomplete from './PlaceAutocomplete'
+import StateMessage from './StateMessage'
+import Stepper from './Stepper'
 
 interface Props {
   participants: FormParticipant[]
@@ -28,16 +32,34 @@ interface Props {
   onSubmit: () => void
 }
 
+const PURPOSE_ICONS: Record<Purpose, LucideIcon> = { meal: Utensils, cafe: Coffee, drink: Beer }
+
+/** 이름 첫 글자 (비었으면 순번) */
+const initialOf = (name: string, i: number) => [...name.trim()][0] ?? String(i + 1)
+
 export default function InputForm(props: Props) {
   const { participants, purpose, meetingTime, meetingError, errors, loading, submitError } = props
   const count = participants.length
+
+  const peopleReady = participants.every((p) => p.name.trim() && p.origin)
+  const ready = peopleReady && !!meetingTime
+  const step = !peopleReady ? 1 : !meetingTime ? 2 : 3
+  const missing = !peopleReady
+    ? participants.some((p) => !p.origin)
+      ? '모든 참여자의 출발지를 선택하면 추천을 받을 수 있어요'
+      : '모든 참여자의 이름을 입력해 주세요'
+    : !meetingTime
+      ? '약속 시간을 입력해 주세요'
+      : null
+
+  if (loading) return <LoadingWalk />
 
   return (
     <form
       className="form"
       onSubmit={(e) => {
         e.preventDefault()
-        props.onSubmit()
+        if (ready) props.onSubmit()
       }}
       noValidate
     >
@@ -46,25 +68,20 @@ export default function InputForm(props: Props) {
         <p>{BRAND.tagline}</p>
       </header>
 
+      <Stepper current={step} />
+
       <section aria-label="참여자">
         <div className="section-title">
-          <h2>참여자 ({count}/{MAX_PARTICIPANTS})</h2>
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={props.onAdd}
-            disabled={count >= MAX_PARTICIPANTS}
-          >
-            + 추가
-          </button>
+          <h2>참여자 <span className="count-badge">{count}/{MAX_PARTICIPANTS}</span></h2>
         </div>
 
         {participants.map((p, i) => {
           const err = errors[p.key]
+          const color = PARTICIPANT_COLORS[i]
           return (
             <div className="participant-card" key={p.key}>
               <div className="card-head">
-                <span className="dot" style={{ background: PARTICIPANT_COLORS[i] }} />
+                <span className="avatar" style={{ background: color }} aria-hidden="true">{initialOf(p.name, i)}</span>
                 <strong>참여자 {i + 1}</strong>
                 <button
                   type="button"
@@ -106,36 +123,48 @@ export default function InputForm(props: Props) {
 
               <div className="field">
                 <label htmlFor={`origin-${p.key}`}>출발지</label>
-                <PlaceAutocomplete
-                  id={`origin-${p.key}`}
-                  value={p.origin}
-                  hasError={!!err?.origin}
-                  onChange={(hit) => props.onChangeParticipant(p.key, { origin: hit })}
-                />
+                <div className="with-icon">
+                  <MapPin className="field-icon" size={18} strokeWidth={2.2} style={{ color }} aria-hidden="true" />
+                  <PlaceAutocomplete
+                    id={`origin-${p.key}`}
+                    value={p.origin}
+                    hasError={!!err?.origin}
+                    onChange={(hit) => props.onChangeParticipant(p.key, { origin: hit })}
+                  />
+                </div>
                 {err?.origin && <p className="field-error">{err.origin}</p>}
               </div>
             </div>
           )
         })}
+
+        <button type="button" className="add-card" onClick={props.onAdd} disabled={count >= MAX_PARTICIPANTS}>
+          <Plus size={18} strokeWidth={2.4} aria-hidden="true" />
+          {count >= MAX_PARTICIPANTS ? `최대 ${MAX_PARTICIPANTS}명까지 추가할 수 있어요` : '참여자 추가'}
+        </button>
       </section>
 
       <section aria-label="모임 조건">
         <div className="section-title">
           <h2>모임 목적</h2>
         </div>
-        <div className="segmented" role="radiogroup" aria-label="모임 목적">
-          {PURPOSE_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={purpose === o.value}
-              className={purpose === o.value ? 'active' : ''}
-              onClick={() => props.onPurpose(o.value)}
-            >
-              {o.label}
-            </button>
-          ))}
+        <div className="purpose-chips" role="radiogroup" aria-label="모임 목적">
+          {PURPOSE_OPTIONS.map((o) => {
+            const Icon = PURPOSE_ICONS[o.value]
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={purpose === o.value}
+                className={`purpose-chip${purpose === o.value ? ' active' : ''}`}
+                onClick={() => props.onPurpose(o.value)}
+              >
+                <Icon size={26} strokeWidth={2} aria-hidden="true" />
+                <span>{o.label}</span>
+              </button>
+            )
+          })}
         </div>
         <p className="transport">
           이동수단 <span className="chip">대중교통</span>
@@ -158,20 +187,17 @@ export default function InputForm(props: Props) {
       </section>
 
       {submitError && (
-        <div className="alert error" role="alert">
+        <StateMessage Icon={SearchX} tone="error" title="앗, 추천을 가져오지 못했어요" role="alert">
           {submitError}
-        </div>
+        </StateMessage>
       )}
 
-      <button type="submit" className="btn primary block" disabled={loading}>
-        {loading ? (
-          <>
-            <span className="spinner" /> 추천 계산 중…
-          </>
-        ) : (
-          '추천 받기'
-        )}
-      </button>
+      <div className="submit-bar">
+        {missing && <p className="submit-hint">{missing}</p>}
+        <button type="submit" className="btn primary block" disabled={!ready}>
+          추천 받기
+        </button>
+      </div>
     </form>
   )
 }

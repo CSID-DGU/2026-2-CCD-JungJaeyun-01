@@ -179,7 +179,7 @@ export default function MapView(props: Props) {
       text: string,
       title: string,
       zIndex: number,
-      extra: { onClick?: () => void; color?: string; iconSvg?: string } = {},
+      extra: { onClick?: () => void; color?: string; iconSvg?: string; label?: string; badge?: string } = {},
     ) => {
       // .pin(끝이 뾰족한 핀 모양 상자) 안의 .pin-body 원에 내용이 들어간다. 선택 시 커지는 효과는 .pin-body에만 준다.
       const el = document.createElement('div')
@@ -190,6 +190,19 @@ export default function MapView(props: Props) {
       if (extra.iconSvg) body.innerHTML = extra.iconSvg
       else body.textContent = text
       el.appendChild(body)
+      if (extra.label) {
+        // 출발지 핀 옆에 이름표를 붙여 추천 장소 핀과 한눈에 구별되게 한다
+        const tag = document.createElement('span')
+        tag.className = 'pin-label'
+        tag.textContent = extra.label
+        el.appendChild(tag)
+      }
+      if (extra.badge) {
+        const b = document.createElement('b')
+        b.className = 'pin-rank'
+        b.textContent = extra.badge
+        el.appendChild(b)
+      }
       if (extra.color) el.style.setProperty('--pin-color', extra.color)
       if (extra.onClick) el.addEventListener('click', extra.onClick)
       const overlay = new kakao.maps.CustomOverlay({
@@ -210,6 +223,7 @@ export default function MapView(props: Props) {
     origins.forEach((o, i) =>
       addPin(`origin-${i}`, o, 'pin-origin', unique ? initials[i] : String(i + 1), `${o.name} 출발지`, 3, {
         color: o.color,
+        label: o.name,
       }),
     )
     regions.forEach((r, i) =>
@@ -234,7 +248,7 @@ export default function MapView(props: Props) {
           '',
           p.name,
           active ? 9 : 7,
-          { onClick: () => onSelectPlace(p.id), iconSvg: kindIconSvg(placeKind(p), 16), color: PLACE_COLORS[placeKind(p)] },
+          { onClick: () => onSelectPlace(p.id), iconSvg: kindIconSvg(placeKind(p), 16), color: PLACE_COLORS[placeKind(p)], badge: String(p.rank) },
         )
       })
     }
@@ -378,6 +392,13 @@ export default function MapView(props: Props) {
   return (
     <div className="map-box">
       <div ref={box} className="map" />
+      {status === 'ready' && (origins.length > 0 || regions.length > 0) && (
+        <ul className="map-legend" aria-label="지도 범례">
+          <li><i className="lg lg-origin" />출발지</li>
+          {regions.length > 0 && <li><i className="lg lg-region" />추천 지역</li>}
+          {regions.length > 0 && <li><i className="lg lg-place" />추천 장소</li>}
+        </ul>
+      )}
       {status === 'ready' && regions.length > 0 && (
         <button type="button" className="map-toggle" onClick={onToggleView}>
           {viewMode === 'overview' ? '선택 지역 확대' : '전체 보기'}

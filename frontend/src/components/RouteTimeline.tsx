@@ -25,7 +25,7 @@ interface Props {
   onFocusSegment: (segment: number | null) => void
   /** null이면 아직 지도에서 경로 그리기가 시작되기 전이라 숨겨 둔다 */
   play: TimelinePlay | null
-  /** "지금 출발"로 직접 켠 실시간 모드 */
+  /** "실시간 도착정보 활성화"로 직접 켠 실시간 모드 */
   liveManual: boolean
 }
 

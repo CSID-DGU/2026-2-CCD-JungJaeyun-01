@@ -206,3 +206,65 @@
 .seg-part .seg-full, .seg-part .seg-short { display: none; white-space: nowrap; }
 @container (min-width: 78px) { .seg-part .seg-full { display: inline; } }
 @container (min-width: 34px) and (max-width: 77.9px) { .seg-part .seg-short { display: inline; } }
+
+/* ---------------- 지도 마커 구별: 출발지=이름표 달린 둥근 색 핀, 추천 지역=순위 숫자 핀, 추천 장소=흰 네모 아이콘 핀 ---------------- */
+.pin-origin { --d: 40px; }
+.pin-origin .pin-body { border-width: 4px; font-size: 17px; }
+.pin-label {
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 8px;
+  z-index: 2;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: var(--gray-900);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--pin-color);
+}
+.pin-region { --d: 40px; }
+.pin.pin-place { --d: 30px; }
+.pin.pin-place .pin-body { border-radius: 10px; background: #fff; color: var(--pin-color); border: 3px solid var(--pin-color); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28); }
+.pin.pin-place::before { width: 10px; height: 10px; top: calc(var(--d) - 6px); border-radius: 2px; }
+.pin-rank {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gray-900);
+  color: #fff;
+  border: 2px solid #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.map-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 40px;
+  z-index: 5;
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 12px;
+  list-style: none;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+.map-legend li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lg { width: 14px; height: 14px; display: inline-block; flex: none; }
+.lg-origin { border-radius: 50%; background: var(--brand); border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--brand); }
+.lg-region { border-radius: 50%; background: var(--gray-900); border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--gray-900); }
+.lg-place { border-radius: 4px; background: #fff; border: 3px solid #ff8a3d; }
+@media (max-width: 420px) { .map-legend { gap: 8px; padding: 6px 10px; font-size: 11px; } }

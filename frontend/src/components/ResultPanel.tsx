@@ -29,7 +29,7 @@ interface Props {
   /** "실제 경로 불러오기" 버튼 */
   onLoadRoute: (participant: number) => void
   onBack: () => void
-  /** "지금 출발"로 켠 실시간 모드 */
+  /** "실시간 도착정보 활성화" 버튼으로 켠 실시간 모드 */
   liveMode: boolean
   onToggleLive: () => void
   /** 공유 메시지 본문·다시 보기 주소·로그인 여부 */
@@ -363,7 +363,7 @@ export default function ResultPanel({
 
       <div className="live-bar">
         <button type="button" className={`btn ${liveMode ? 'live-on' : 'ghost'}`} aria-pressed={liveMode} onClick={onToggleLive}>
-          {liveMode ? '● 실시간 끄기' : '지금 출발'}
+          {liveMode ? '● 실시간 도착정보 끄기' : '실시간 도착정보 활성화'}
         </button>
         <span className="live-hint">
           {liveMode

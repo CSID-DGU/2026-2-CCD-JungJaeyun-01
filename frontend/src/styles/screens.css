@@ -1,6 +1,11 @@
 /* 입력·결과·지도 화면에 MEET PICK 디자인을 입힌다 (동작·구조는 그대로). */
 .panel { --panel-pad: 24px; }
-@media (max-width: 900px) { .panel { --panel-pad: 16px; } }
+/* 800px 이하: 패널이 아니라 페이지 전체가 스크롤되므로 고정 바는 화면 맨 아래(bottom: 0)에 붙인다 */
+@media (max-width: 800px) {
+  .panel { --panel-pad: 16px; }
+  .panel { padding-bottom: 0; }
+  .submit-bar, .share-bar { bottom: 0 !important; margin-bottom: 0; }
+}
 
 /* ---------------- 단계 표시 ---------------- */
 .stepper { display: flex; align-items: center; gap: 0; padding: 0; margin: 18px 0 8px; list-style: none; }
@@ -38,7 +43,8 @@
 /* ---------------- 하단 고정 바 (추천 버튼 / 공유 버튼) ---------------- */
 .submit-bar, .share-bar {
   position: sticky;
-  bottom: 0;
+  /* 아래 여백(패널 padding)만큼 내려서 화면 맨 아래에 딱 붙인다 (틈으로 내용이 비치지 않게) */
+  bottom: calc(var(--panel-pad) * -1);
   z-index: 20;
   margin: 20px calc(var(--panel-pad) * -1) calc(var(--panel-pad) * -1);
   padding: 12px var(--panel-pad) calc(12px + env(safe-area-inset-bottom, 0px));

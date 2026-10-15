@@ -10,10 +10,13 @@ export default defineConfig({
   envPrefix: ['VITE_KAKAO_JS_'],
   server: {
     port: 5173,
+    // cloudflared 임시 터널(https://xxxx.trycloudflare.com)로 들어오는 요청을 허용한다.
+    allowedHosts: ['.trycloudflare.com'],
     proxy: {
       // /api/* 는 경로를 바꾸지 않고 그대로 백엔드로 전달한다.
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
-      // 카카오 로그인 리다이렉트도 5173으로 받아 세션 쿠키가 프론트와 같은 출처에 저장되게 한다.
+      // 외부 접속(터널 등)도 5173 하나로 끝난다. Host를 그대로 넘겨야(changeOrigin: false) 백엔드가 접속 주소를 알 수 있다.
+      '/api': { target: 'http://localhost:8000', changeOrigin: false },
+      // 카카오 로그인 리다이렉트도 같은 출처로 받아 세션 쿠키가 프론트와 같은 출처에 저장되게 한다.
       '/auth': { target: 'http://localhost:8000', changeOrigin: false },
     },
   },

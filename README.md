@@ -77,7 +77,7 @@ cp .env.example .env
 
 1. [Kakao Developers](https://developers.kakao.com) → 내 애플리케이션 → 앱 선택 → **앱 키**에서 REST API 키(`KAKAO_REST_API_KEY`), JavaScript 키(`VITE_KAKAO_JS_KEY`)를 `.env`에 넣습니다.
 2. **플랫폼 → Web**에 사이트 도메인 `http://localhost:5173`을 등록합니다 (지도·카카오톡 공유 SDK용).
-3. **제품 설정 → 카카오 로그인**: 활성화 설정을 **ON**으로 하고, **Redirect URI**에 `http://localhost:5173/auth/kakao/callback`을 등록합니다 (`.env`의 `KAKAO_REDIRECT_URI`와 글자까지 같아야 합니다).
+3. **제품 설정 → 카카오 로그인**: 활성화 설정을 **ON**으로 하고, **Redirect URI**에 `http://localhost:5173/auth/kakao/callback`을 등록합니다 (`KAKAO_REDIRECT_URI`를 `.env`에 고정했다면 글자까지 같아야 하고, 비워 두면 접속한 주소 기준으로 자동 계산됩니다).
 4. **카카오 로그인 → 보안**에서 Client Secret을 **사용함**으로 켰다면 그 값을 `.env`의 `KAKAO_CLIENT_SECRET`에 넣습니다 (끄면 비워 둡니다).
 5. **동의항목**: `닉네임`(profile_nickname)과 `카카오톡 메시지 전송`(talk_message)을 설정합니다. talk_message는 "선택 동의"로 설정할 수 있습니다.
 6. 로그인 후에도 "나에게 보내기"가 권한 오류로 실패하면, 로그아웃 후 다시 로그인해 동의 화면에서 메시지 전송에 동의해 주세요.
@@ -93,6 +93,22 @@ cp .env.example .env
 - 표시 조건: 경로의 출발 시각 30분 전부터 자동으로 켜지고, 그 전에는 결과 화면의 **지금 출발** 버튼을 눌렀을 때만 켜집니다. 켜져 있는 동안 30초마다 갱신하고, 화면을 떠나거나(조건 다시 입력) 탭이 숨겨지면 멈춥니다.
 - 타임라인의 **첫 번째 승차역/정류장** 옆에 "첫 번째 3분 후 도착 · 2정거장 전 / 두 번째 …"로 표시합니다. 환승 뒤의 열차는 지금 도착 정보가 의미가 없어서 표시하지 않습니다.
 - 지하철 정거장 수는 API 메시지에 없으면 `data/subway/network.json` 노선도로 현재 위치에서 계산합니다.
+
+## 친구에게 임시 공유 (cloudflared 터널)
+
+외부 접속은 프론트(5173) 하나로 끝납니다. `/api`, `/auth`는 Vite 프록시가 백엔드(8000)로 넘기고, 백엔드는 **접속한 주소(요청 Host / X-Forwarded-*)** 로 로그인 Redirect URI와 공유 링크를 만듭니다 (`FRONTEND_URL`, `KAKAO_REDIRECT_URI`는 고정하고 싶을 때만 `.env`에 넣으세요).
+
+```bash
+winget install --id Cloudflare.cloudflared -e
+cloudflared tunnel --url http://localhost:5173
+```
+
+출력되는 `https://xxxx.trycloudflare.com` 주소를 친구에게 보내면 됩니다. 주소는 터널을 열 때마다 바뀌므로, 매번 카카오 개발자 콘솔에 다음을 등록해야 카카오 로그인·카톡 공유·지도가 동작합니다.
+
+- **플랫폼 → Web** 사이트 도메인: `https://xxxx.trycloudflare.com`
+- **카카오 로그인 → Redirect URI**: `https://xxxx.trycloudflare.com/auth/kakao/callback`
+
+등록하지 않아도 추천 기능 자체는 동작하지만 지도·로그인·카톡 공유는 막힙니다. (Vite `server.allowedHosts`에 `.trycloudflare.com`이 허용돼 있습니다.)
 
 ## 경로 API 호출 구조 (2단계)
 

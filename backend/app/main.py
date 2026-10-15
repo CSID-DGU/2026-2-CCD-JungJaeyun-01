@@ -18,7 +18,8 @@ app = FastAPI(title="Meetup Recommender API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    # 브라우저는 프론트(Vite) 프록시로 같은 출처에서 호출하므로 CORS는 백엔드를 직접 열어 볼 때만 쓴다.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://[a-z0-9-]+\.trycloudflare\.com$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

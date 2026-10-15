@@ -10,7 +10,7 @@ from app.main import app
 from app.routers.auth import get_kakao_auth, get_sessions
 from app.services.kakao_auth import KakaoAuthClient, SessionStore
 
-FRONT = settings.FRONTEND_URL
+FRONT = "http://testserver"  # TestClient의 기본 접속 주소. 백엔드는 요청 Host 기준으로 주소를 만든다
 
 
 class FakeKakao:
@@ -40,7 +40,7 @@ class FakeKakao:
 @pytest.fixture
 def kakao():
     fake = FakeKakao()
-    client = KakaoAuthClient("rest-key", "", f"{FRONT}/auth/kakao/callback", http=httpx.Client(transport=httpx.MockTransport(fake)))
+    client = KakaoAuthClient("rest-key", "", http=httpx.Client(transport=httpx.MockTransport(fake)))
     store = SessionStore()
     app.dependency_overrides[get_kakao_auth] = lambda: client
     app.dependency_overrides[get_sessions] = lambda: store
@@ -79,10 +79,10 @@ def test_callback_creates_httponly_session_and_never_exposes_the_token(kakao, mo
 
 def test_client_secret_is_sent_only_when_configured(kakao):
     fake, client = kakao
-    client.exchange_code("abc")
+    client.exchange_code("abc", "http://x/cb")
     assert b"client_secret" not in fake.calls[0].content
     client.client_secret = "sec"
-    client.exchange_code("abc")
+    client.exchange_code("abc", "http://x/cb")
     assert b"client_secret=sec" in [c for c in fake.calls if str(c.url).endswith("/oauth/token")][1].content
 
 
@@ -144,3 +144,37 @@ def test_memo_rejects_foreign_links(kakao, monkeypatch):
     c = TestClient(app)
     login(c)
     assert c.post("/api/share/memo", json={"text": "x", "url": "https://evil.example/?s=1"}).status_code == 422
+
+
+TUNNEL = {"host": "abc-def.trycloudflare.com", "x-forwarded-proto": "https"}
+
+
+def test_urls_follow_the_request_host_behind_a_tunnel(kakao, monkeypatch):
+    monkeypatch.setattr(settings, "KAKAO_REST_API_KEY", "rest-key")
+    c = TestClient(app, base_url="https://abc-def.trycloudflare.com")  # Secure 쿠키는 https에서만 되돌아온다
+    r = c.get("/auth/kakao/login", headers=TUNNEL, follow_redirects=False)
+    q = parse_qs(urlparse(r.headers["location"]).query)
+    assert q["redirect_uri"] == ["https://abc-def.trycloudflare.com/auth/kakao/callback"]
+    assert "secure" in r.headers["set-cookie"].lower()  # https 접속이면 쿠키에 Secure
+    state = q["state"][0]
+    cb = c.get(f"/auth/kakao/callback?code=abc&state={state}", headers=TUNNEL, follow_redirects=False)
+    assert cb.headers["location"] == "https://abc-def.trycloudflare.com/?login=ok"
+    # 나에게 보내기 링크도 접속 주소와 같은 출처만 허용
+    ok = c.post("/api/share/memo", headers=TUNNEL, json={"text": "x", "url": "https://abc-def.trycloudflare.com/?s=1"})
+    assert ok.status_code == 200
+    bad = c.post("/api/share/memo", headers=TUNNEL, json={"text": "x", "url": "http://localhost:5173/?s=1"})
+    assert bad.status_code == 422
+
+
+def test_explicit_frontend_url_overrides_the_request_host(kakao, monkeypatch):
+    monkeypatch.setattr(settings, "KAKAO_REST_API_KEY", "rest-key")
+    monkeypatch.setattr(settings, "FRONTEND_URL", "https://fixed.example")
+    monkeypatch.setattr(settings, "KAKAO_REDIRECT_URI", "")
+    r = TestClient(app).get("/auth/kakao/login", headers=TUNNEL, follow_redirects=False)
+    assert parse_qs(urlparse(r.headers["location"]).query)["redirect_uri"] == ["https://fixed.example/auth/kakao/callback"]
+
+
+def test_weird_host_header_is_rejected(kakao, monkeypatch):
+    monkeypatch.setattr(settings, "KAKAO_REST_API_KEY", "rest-key")
+    r = TestClient(app).get("/auth/kakao/login", headers={"x-forwarded-host": "evil.com/path?x"}, follow_redirects=False)
+    assert r.status_code == 400

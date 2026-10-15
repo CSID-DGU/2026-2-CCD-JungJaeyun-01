@@ -1,6 +1,6 @@
 import type { PlaceHit, RecommendRequest, RecommendResponse, RouteResponse } from './types'
 
-const NETWORK_ERROR = '서버에 연결할 수 없습니다. 백엔드(localhost:8000)가 실행 중인지 확인해 주세요.'
+const NETWORK_ERROR = '서버에 연결할 수 없습니다. 백엔드가 실행 중인지 확인해 주세요.'
 
 async function errorMessage(res: Response): Promise<string> {
   try {

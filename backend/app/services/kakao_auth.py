@@ -67,13 +67,13 @@ def _json(r: httpx.Response) -> dict:
 
 
 class KakaoAuthClient:
-    def __init__(self, rest_key: str, client_secret: str, redirect_uri: str, http: httpx.Client | None = None):
-        self.rest_key, self.client_secret, self.redirect_uri = rest_key, client_secret, redirect_uri
+    def __init__(self, rest_key: str, client_secret: str, http: httpx.Client | None = None):
+        self.rest_key, self.client_secret = rest_key, client_secret
         self._http = http or httpx.Client(timeout=10)
 
-    def authorize_url(self, state: str) -> str:
+    def authorize_url(self, state: str, redirect_uri: str) -> str:
         return AUTHORIZE_URL + "?" + urlencode({
-            "client_id": self.rest_key, "redirect_uri": self.redirect_uri, "response_type": "code",
+            "client_id": self.rest_key, "redirect_uri": redirect_uri, "response_type": "code",
             "scope": SCOPES, "state": state,
         })
 
@@ -94,8 +94,8 @@ class KakaoAuthClient:
             raise KakaoAuthError(f"카카오 토큰 발급 실패 {code} {desc}".strip(), 401)
         return body
 
-    def exchange_code(self, code: str) -> Session:
-        tok = self._token({"grant_type": "authorization_code", "redirect_uri": self.redirect_uri, "code": code})
+    def exchange_code(self, code: str, redirect_uri: str) -> Session:
+        tok = self._token({"grant_type": "authorization_code", "redirect_uri": redirect_uri, "code": code})
         access = tok["access_token"]
         return Session(nickname=self.nickname(access), access_token=access, refresh_token=tok.get("refresh_token"),
                        expires_at=time.time() + int(tok.get("expires_in", 21599)))

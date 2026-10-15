@@ -24,7 +24,7 @@ export function loadKakaoMaps(appKey: string): Promise<any> {
       loading = null
       reject(
         new Error(
-          '카카오맵을 불러오지 못했습니다. JavaScript 키와 카카오 개발자 콘솔의 웹 도메인(http://localhost:5173) 등록을 확인해 주세요.',
+          `카카오맵을 불러오지 못했습니다. JavaScript 키와 카카오 개발자 콘솔의 웹 도메인(${window.location.origin}) 등록을 확인해 주세요.`,
         ),
       )
     }

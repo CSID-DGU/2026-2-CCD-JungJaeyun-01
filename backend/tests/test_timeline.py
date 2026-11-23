@@ -219,3 +219,23 @@ class TestRingDirection:
         assert ring_direction("2호선", "시청", "충정로") == "외선"
         assert ring_direction("3호선", "홍대입구", "신촌") is None
         assert ring_direction("2호선", "성수", "뚝섬") == "외선"
+
+
+class TestReusedRouteDates:
+    def test_a_route_reused_for_a_later_week_moves_to_that_meeting_date_and_keeps_its_duration(self):
+        from app.providers.google import rebase_to_meeting_date
+        data, origin, dest = load("arrive_hongdae_dongdaemun")
+        route = convert_route(data["response"], origin, dest)
+        later = datetime(2026, 11, 7, 18, 0, tzinfo=KST)  # 저장된 경로는 10/17 기준
+        moved = rebase_to_meeting_date(route, later)
+        assert datetime.fromisoformat(moved.arrival_time).date() == later.date()
+        assert all(datetime.fromisoformat(s.arrival_time).date() == later.date() for s in moved.segments if s.arrival_time)
+        before = datetime.fromisoformat(route.arrival_time) - datetime.fromisoformat(route.departure_time)
+        after = datetime.fromisoformat(moved.arrival_time) - datetime.fromisoformat(moved.departure_time)
+        assert before == after and moved.total_minutes == route.total_minutes
+
+    def test_same_date_is_untouched(self):
+        from app.providers.google import rebase_to_meeting_date
+        data, origin, dest = load("arrive_hongdae_dongdaemun")
+        route = convert_route(data["response"], origin, dest)
+        assert rebase_to_meeting_date(route, datetime.fromisoformat(route.arrival_time)) is route

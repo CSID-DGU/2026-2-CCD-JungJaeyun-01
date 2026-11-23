@@ -23,6 +23,7 @@ from app.schemas import (
     MetricRanksOut,
     MetricsOut,
     NormalizedOut,
+    FairnessOut,
     ParticipantTravelOut,
     Phase2Out,
     RegionOut,
@@ -32,6 +33,7 @@ from app.schemas import (
     StationOut,
     WeightsOut,
 )
+from app.scoring.picks import fairness_level
 from app.scoring.region import RegionMetrics, RegionScore, score_regions
 from app.stations import Station, nearest_stations
 from app.subway import TravelEstimator
@@ -150,8 +152,11 @@ def recommend_regions(
     scores = scores[: config.top_n]
 
     regions = []
+    fairness_labels = {"high": "높음", "mid": "보통", "low": "낮음"}
     for i, r in enumerate(scores, 1):
         st = by_id[r.region_id]
+        gap = max(r.minutes) - min(r.minutes)
+        level = fairness_level(gap, config.fairness)
         metric_ranks = {a: ranks[a][r.region_id] for a in ranks}
         regions.append(RegionOut(
             rank=i,
@@ -169,6 +174,7 @@ def recommend_regions(
                                      estimate_minutes=round(estimates[st.id][k], 1))
                 for k, (p, m, est) in enumerate(zip(participants, r.minutes, estimated_flags[st.id]))
             ],
+            fairness=FairnessOut(level=level, label=fairness_labels[level], gap_minutes=round(gap, 1)),
         ))
 
     if provider is None:

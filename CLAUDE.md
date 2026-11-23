@@ -59,6 +59,12 @@ meetup-recommender/
 - 연령대 가중치는 실제 데이터 기반인지 사전 정의 가중치인지 구분할 수 있게 구현한다. 현재 `config/age_preferences.json`은 `"source": "assumed"`(임의값)이며 API 응답에도 `age_preference.is_assumed`로 표시된다.
 - 구글 평점을 못 받으면(키 없음/실패/일일 상한 초과) 항목을 빼지 않고 사전 평균 평점(prior_mean) + 리뷰 수 0(인기도 최저)으로 계산한다 (재정규화하면 평점 없는 장소가 위로 올라간다). 화면에는 가짜 평점 없이 "평점 정보 없음". 구글은 지역별 상위 5곳만 조회하고, 캐시와 하루 호출 상한(`place.yaml`의 `google.daily_limit`)을 지킨다.
 
+### 평가·검증
+- RegionScore/PlaceScore 가중치는 현재 **잠정값**이다 (사용자 설문 전). 근거 없는 값을 '검증됨'이라고 쓰지 않는다. 조정 절차는 `docs/evaluation/05-evaluation-plan.md`.
+- 비교 실험은 `backend/scripts/evaluate.py` (`collect`는 기본이 dry-run, `--run`일 때만 Google을 호출). 결과는 `docs/evaluation/data/`에 저장해 두고 분석은 호출 없이 반복한다.
+- 공평 추천 / 장소 만족 추천 규칙은 `app/scoring/picks.py` + `config/region.yaml`의 `picks`, `fairness_levels` (문서: `docs/evaluation/07-conflict-rule.md`).
+- 설문 응답 CSV는 저장소에 올리지 않는다. 설문 데이터를 임의로 만들어 넣지 않는다 (테스트용 가짜 값은 pytest 안에서만).
+
 ## 실행 방법
 
 처음 한 번: 루트에서 `.env.example`을 `.env`로 복사하고 키를 채운다 (`MOCK_*`는 pytest 전용이라 실행에는 실제 키가 필요하다).

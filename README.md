@@ -110,6 +110,21 @@ cloudflared tunnel --url http://localhost:5173
 
 등록하지 않아도 추천 기능 자체는 동작하지만 지도·로그인·카톡 공유는 막힙니다. (Vite `server.allowedHosts`에 `.trycloudflare.com`이 허용돼 있습니다.)
 
+## 다른 PC에서 더블클릭으로 실행 (실행 패키지)
+
+개발 환경(Node, Vite)이 없는 PC(예: 교수님)에서도 열 수 있게, 빌드된 화면을 백엔드가 함께 내주는 압축 파일을 만들 수 있습니다.
+
+```bash
+cd backend
+python scripts/make_package.py            # 바탕화면에 밋픽_실행패키지.zip 생성 (프론트를 다시 빌드)
+```
+
+받은 사람은 압축을 풀고 `실행하기.bat`을 더블클릭하면 됩니다 (Python 3.11 이상 필요, 처음 한 번 필요한 프로그램이 자동 설치됨). 서버가 `http://localhost:5173` 하나로 화면과 API를 같이 내주므로 카카오 콘솔에 등록한 localhost:5173 주소가 그대로 맞습니다. **API 키(`.env`)는 압축 파일에 들어가지 않습니다.** 받는 사람은 작성자에게 따로 받은 `.env`를 `실행하기.bat` 옆에 두거나 처음 실행 때 열리는 메모장에 붙여넣습니다. (JS 키 `VITE_KAKAO_JS_KEY`만 화면에 포함되는데, 원래 브라우저에 공개되는 키이고 등록한 도메인에서만 동작합니다.)
+
+## 평가·검증 문서
+
+추천 점수의 계산 근거, 기존 방식과의 비교 실험, 가중치 민감도, 사용자 평가 계획·설문지는 [docs/evaluation/README.md](docs/evaluation/README.md)에 있습니다. 실험은 `backend/scripts/evaluate.py`(이동시간 수집은 `collect --run`, 분석은 `analyze`), 설문 분석은 `backend/scripts/analyze_survey.py`로 재현합니다.
+
 ## 경로 API 호출 구조 (2단계)
 
 경로 API 비용을 줄이려고 후보를 API 없이 먼저 거르고, 상위 3곳만 Google로 확인합니다.

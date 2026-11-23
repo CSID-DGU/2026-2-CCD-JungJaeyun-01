@@ -65,6 +65,12 @@ class ParticipantTravelOut(BaseModel):
     estimate_minutes: float | None = None  # 1단계 추정값 (참고용)
 
 
+class FairnessOut(BaseModel):
+    level: Literal["high", "mid", "low"]
+    label: str                 # 화면 표시 말: 높음 / 보통 / 낮음
+    gap_minutes: float         # 가장 오래 걸리는 사람 - 가장 적게 걸리는 사람
+
+
 class RegionOut(BaseModel):
     rank: int
     station: StationOut
@@ -75,6 +81,7 @@ class RegionOut(BaseModel):
     normalized: NormalizedOut
     metric_ranks: MetricRanksOut
     participants: list[ParticipantTravelOut]
+    fairness: FairnessOut
 
 
 class WeightsOut(BaseModel):
@@ -167,6 +174,7 @@ class PlaceOut(BaseModel):
 
 class RegionWithPlacesOut(RegionOut):
     places: list[PlaceOut]
+    place_quality: float | None = None   # 장소 만족도: 상위 장소들의 PlaceScore 평균 (장소가 없으면 null)
 
 
 class AgePreferenceMeta(BaseModel):
@@ -181,7 +189,17 @@ class RatingMeta(BaseModel):
     status_counts: dict[str, int]
 
 
+class PicksOut(BaseModel):
+    fair_rank: int              # 공평 추천(RegionScore 1위)
+    satisfaction_rank: int      # 장소 만족 추천 (한도 안에서 장소 만족도가 가장 높은 지역)
+    differs: bool               # 두 추천이 다른가
+    tolerance_score: float
+    max_extra_minutes: float
+    summary: str                # 화면에 보여줄 설명 한 줄
+
+
 class RecommendMeta(RegionRecommendMeta):
+    picks: PicksOut
     place_source: str
     place_weights: PlaceWeightsOut
     age_preference: AgePreferenceMeta

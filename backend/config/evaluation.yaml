@@ -1,0 +1,31 @@
+# 비교 실험 설정 (scripts/evaluate.py). 시나리오 = 같은 모임 조건을 여러 방식에 똑같이 적용해 보는 입력.
+# 출발지는 후보 역(data/stations.json)의 이름으로 지정한다.
+# 이동시간은 실제 Google Routes(대중교통, 약속 시간 도착 기준)로 한 번만 수집해 docs/evaluation/data/에 저장하고,
+# 이후 분석은 저장된 값만 쓴다 (API 호출 0).
+
+# 기존 방식 비교: 사람들이 흔히 떠올리는 대표 번화가(허브)
+hubs: [강남역, 홍대입구역, 서울역, 신촌역, 건대입구역, 잠실역, 사당역]
+
+# 시나리오마다 후보 풀 = 출발지 중심에서 가까운 역 candidate_k곳 + 허브. (TRANSIT 행렬은 1회 요청에 100칸 제한)
+candidate_k: 20
+max_elements_per_call: 100
+
+scenarios:
+  - id: s1-hongdae-jamsil
+    title: 홍대입구 + 잠실 (2명, 서울 서쪽·동쪽)
+    origins: [홍대입구역, 잠실역]
+  - id: s2-sinchon-konkuk-sadang
+    title: 신촌 + 건대입구 + 사당 (3명)
+    origins: [신촌역, 건대입구역, 사당역]
+  - id: s3-nowon-gangnam-sindorim
+    title: 노원 + 강남 + 신도림 (3명, 북동·남동·남서)
+    origins: [노원역, 강남역, 신도림역]
+  - id: s4-suwon-uijeongbu
+    title: 수원 + 의정부 (2명, 수도권 남북 끝)
+    origins: [수원역, 의정부역]
+  - id: s5-five-people
+    title: 홍대입구 + 강남 + 노원 + 신도림 + 왕십리 (5명)
+    origins: [홍대입구역, 강남역, 노원역, 신도림역, 왕십리역]
+
+# 3×3 계산 예시(교수님 요청): 출발지 3명 × MeetPick 상위 후보 3곳의 실제 이동시간을 한 표로
+example_scenario: s2-sinchon-konkuk-sadang

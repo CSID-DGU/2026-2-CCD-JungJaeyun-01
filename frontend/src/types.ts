@@ -101,6 +101,9 @@ export interface Place {
   review_count: number | null
   age_fit_assumed: boolean
   reason: string
+  /** PlaceScore 구성: 항목별 점수(0~1)와 실제 적용된 가중치 */
+  components: { accessibility: number; rating: number | null; popularity: number | null; purpose: number; age: number }
+  weights_used: Record<string, number>
 }
 
 export interface Region {
@@ -113,6 +116,12 @@ export interface Region {
   metrics: { avg_minutes: number; max_minutes: number; std_minutes: number }
   participants: ParticipantTravel[]
   places: Place[]
+  /** 지표별 0~1 정규화 값(낮을수록 좋음) */
+  normalized: { avg: number; max: number; std: number }
+  /** 이동 공정성(사람 말): 가장 오래/적게 걸리는 사람의 시간 차이로 높음·보통·낮음 */
+  fairness: { level: 'high' | 'mid' | 'low'; label: string; gap_minutes: number }
+  /** 장소 만족도: 상위 장소들의 PlaceScore 평균 */
+  place_quality: number | null
 }
 
 export interface Phase2 {
@@ -143,5 +152,16 @@ export interface RecommendResponse {
     estimate_accuracy: EstimateAccuracy | null
     age_preference: { source: string; is_assumed: boolean; note: string }
     place_warnings: string[]
+    weights: { avg: number; max: number; std: number }
+    place_weights: { accessibility: number; rating: number; popularity: number; purpose: number; age: number }
+    /** 공평 추천(이동시간 기준 1위)과 장소 만족 추천 */
+    picks: {
+      fair_rank: number
+      satisfaction_rank: number
+      differs: boolean
+      tolerance_score: number
+      max_extra_minutes: number
+      summary: string
+    }
   }
 }

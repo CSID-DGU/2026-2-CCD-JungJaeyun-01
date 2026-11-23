@@ -274,3 +274,31 @@
 .lg-region { border-radius: 50%; background: var(--gray-900); border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--gray-900); }
 .lg-place { border-radius: 4px; background: #fff; border: 3px solid #ff8a3d; }
 @media (max-width: 420px) { .map-legend { gap: 8px; padding: 6px 10px; font-size: 11px; } }
+
+/* ---------------- 점수 설명 / 공정성 표시 / 두 가지 추천 ---------------- */
+.fair-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 800; white-space: nowrap; background: var(--gray-100); color: var(--gray-700); }
+.fair-badge.high { background: #e3f6ea; color: #137333; }
+.fair-badge.mid { background: #fff4d6; color: #8a5a00; }
+.fair-badge.low { background: var(--danger-soft); color: var(--danger); }
+.region-title { align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.explain { margin-top: 10px; border: 1px solid var(--gray-200); border-radius: 12px; background: #fff; padding: 0 12px; }
+.explain summary { cursor: pointer; padding: 10px 0; font-size: 13px; font-weight: 700; color: var(--gray-700); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.explain-score { font-weight: 600; color: var(--gray-500); font-size: 12px; white-space: nowrap; }
+.explain-lead { margin: 0 0 8px; font-size: 12.5px; color: var(--gray-500); line-height: 1.5; word-break: keep-all; }
+.explain-table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.explain-table th { text-align: left; font-weight: 700; color: var(--gray-500); padding: 4px 4px 4px 0; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+.explain-table td { padding: 5px 4px 5px 0; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+.explain-table tfoot td { font-weight: 800; border-bottom: 0; padding-top: 8px; }
+.explain-table tfoot td:last-child { text-align: left; }
+.explain-note { margin: 8px 0 12px; font-size: 12px; color: var(--gray-500); line-height: 1.5; word-break: keep-all; }
+.mini-bar { display: inline-block; width: 56px; height: 8px; border-radius: 4px; background: var(--gray-100); vertical-align: middle; overflow: hidden; margin-right: 4px; }
+.mini-bar i { display: block; height: 100%; background: var(--brand); border-radius: 4px; }
+.place-explain { margin: 0 14px 12px; }
+.picks-banner { margin-top: 12px; padding: 12px 14px; border-radius: var(--radius); background: var(--accent-soft); color: var(--accent-dark); font-size: 13.5px; line-height: 1.5; word-break: keep-all; }
+.picks-banner.same { background: var(--gray-100); color: var(--gray-700); }
+.picks-banner p { margin: 0; }
+.picks-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.tab-chip { margin-top: 2px; padding: 1px 8px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent-dark); font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.tab-chip.fair { background: #e3f6ea; color: #137333; }
+.tabs button.active .tab-chip { background: rgba(255, 255, 255, 0.9); }
+.place-score small { white-space: nowrap; }

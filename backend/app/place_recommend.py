@@ -11,6 +11,7 @@ from app.schemas import (
     AgePreferenceMeta,
     PlaceComponentsOut,
     PlaceOut,
+    PicksOut,
     PlaceWeightsOut,
     RatingMeta,
     RecommendMeta,
@@ -18,6 +19,7 @@ from app.schemas import (
     RegionRecommendRequest,
     RegionWithPlacesOut,
 )
+from app.scoring.picks import RegionForPick, choose_picks, place_quality
 from app.scoring.place import (
     PlaceFeatures,
     PlaceScoreResult,
@@ -102,6 +104,25 @@ def rank_places(
     return out
 
 
+def build_picks(regions: Sequence[RegionWithPlacesOut], config: RegionConfig) -> PicksOut:
+    """공평 추천과 장소 만족 추천 (규칙은 scoring/picks.py, 문서는 docs/evaluation/07-conflict-rule.md)."""
+    rules = config.picks
+    fair_rank, sat_rank = choose_picks(
+        [RegionForPick(rank=r.rank, score=r.score, max_minutes=r.metrics.max_minutes, quality=r.place_quality) for r in regions],
+        rules,
+    )
+    differs = fair_rank != sat_rank
+    fair = next(r for r in regions if r.rank == fair_rank)
+    sat = next(r for r in regions if r.rank == sat_rank)
+    if differs:
+        summary = (f"이동이 가장 공평한 곳은 {fair.station.name}, 공평함이 크게 떨어지지 않는 범위에서 장소가 가장 좋은 곳은 "
+                   f"{sat.station.name}({sat.rank}위)예요. 이동시간 차이는 {sat.fairness.gap_minutes:.0f}분 vs {fair.fairness.gap_minutes:.0f}분이에요.")
+    else:
+        summary = f"이동이 가장 공평한 {fair.station.name}이 장소 만족도도 가장 높아서 한 곳만 추천해요."
+    return PicksOut(fair_rank=fair_rank, satisfaction_rank=sat_rank, differs=differs,
+                    tolerance_score=rules.tolerance_score, max_extra_minutes=rules.max_extra_minutes, summary=summary)
+
+
 def recommend_with_places(
     request: RegionRecommendRequest,
     estimator: TravelEstimator,
@@ -130,13 +151,18 @@ def recommend_with_places(
         except PlaceSearchError as e:
             warnings.append(f"{station.name}: 장소 검색 실패 - {e}")
             ranked = []
-        regions.append(RegionWithPlacesOut(**region.model_dump(), places=ranked))
+        quality = place_quality([pl.score for pl in ranked], region_config.picks.quality_top_n)
+        regions.append(RegionWithPlacesOut(**region.model_dump(), places=ranked,
+                                           place_quality=round(quality, 4) if quality is not None else None))
+
+    picks = build_picks(regions, region_config)
 
     age = place_config.age
     return RecommendResponse(
         regions=regions,
         meta=RecommendMeta(
             **base.meta.model_dump(),
+            picks=picks,
             place_source=place_service.source,
             place_weights=PlaceWeightsOut(**place_config.weights.as_dict()),
             age_preference=AgePreferenceMeta(source=age.source, is_assumed=age.is_assumed, note=age.note),

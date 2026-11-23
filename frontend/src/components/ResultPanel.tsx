@@ -9,6 +9,7 @@ import { legColor } from '../map/geometry'
 import { fitMinutes, lineLabel } from '../routeFormat'
 import RouteTimeline, { LineBadge, type TimelinePlay } from './RouteTimeline'
 import ShareBar from './ShareBar'
+import { FairnessBadge, PicksBanner, PlaceScoreExplain, RegionScoreExplain } from './ScoreExplain'
 import StateMessage from './StateMessage'
 
 interface Props {
@@ -310,14 +311,15 @@ function PlaceCard({ place, selected, onSelect }: { place: Place; selected: bool
             ))}
           </span>
         </span>
-        <span className="place-score" title="PlaceScore">
+        <span className="place-score" title="PlaceScore (0~1, 높을수록 이 모임에 어울리는 장소)">
           {place.score.toFixed(2)}
-          <small>PlaceScore</small>
+          <small>점수</small>
         </span>
       </button>
       <a className="place-link" href={kakaoPlaceUrl(place)} target="_blank" rel="noopener">
         카카오맵에서 보기 ↗
       </a>
+      <PlaceScoreExplain place={place} />
     </li>
   )
 }
@@ -378,6 +380,8 @@ export default function ResultPanel({
         </span>
       </div>
 
+      <PicksBanner picks={data.meta.picks} regions={data.regions} onSelect={onSelectRegion} />
+
       <div className="tabs" role="tablist" aria-label="추천 지역" data-count={data.regions.length}>
         {data.regions.map((r, i) => (
           <button
@@ -390,6 +394,8 @@ export default function ResultPanel({
           >
             <span className="tab-rank">{r.rank === 1 && <Crown size={14} strokeWidth={2.4} aria-hidden="true" />}{r.rank}위</span>
             <span className="tab-name">{r.station.name}</span>
+            {data.meta.picks.differs && r.rank === data.meta.picks.satisfaction_rank && <span className="tab-chip">장소 좋은 곳</span>}
+            {data.meta.picks.differs && r.rank === data.meta.picks.fair_rank && <span className="tab-chip fair">가장 공평</span>}
           </button>
         ))}
       </div>
@@ -400,9 +406,7 @@ export default function ResultPanel({
             {region.station.name}
             {region.rank === 1 && <span className="pick-badge"><Crown size={14} strokeWidth={2.4} aria-hidden="true" /> PICK</span>}
           </h2>
-          <span className="score" title="RegionScore (높을수록 좋음)">
-            RegionScore <b>{region.score.toFixed(3)}</b>
-          </span>
+          <FairnessBadge region={region} />
         </div>
         {region.station.lines.length > 0 && <p className="lines">{region.station.lines.join(' · ')}</p>}
         <p className={`source-line${travelSource === 'estimate' ? ' estimate' : ''}`}>
@@ -412,6 +416,7 @@ export default function ResultPanel({
         </p>
         {rankChange && <p className="rank-change">{rankChange}</p>}
         <p className="reason bubble">{region.reason}</p>
+        <RegionScoreExplain region={region} weights={data.meta.weights} />
 
         <TravelBars
           region={region}

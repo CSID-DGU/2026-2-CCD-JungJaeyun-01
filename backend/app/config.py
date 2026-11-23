@@ -10,6 +10,7 @@ from typing import Mapping
 import yaml
 
 from app.scoring.place import AgeGroupPreference, PlaceScoringParams, PlaceWeights
+from app.scoring.picks import FairnessLevels, PickRules
 from app.scoring.region import RegionWeights
 from app.subway import EstimateParams
 
@@ -22,6 +23,8 @@ class RegionConfig:
     candidate_k: int
     top_n: int
     shortlist_size: int = 8
+    fairness: FairnessLevels = FairnessLevels(high_gap_max=5.0, mid_gap_max=12.0)
+    picks: PickRules = PickRules(tolerance_score=0.10, max_extra_minutes=8.0, quality_top_n=3)
 
 
 @dataclass(frozen=True)
@@ -57,6 +60,10 @@ def load_region_config() -> RegionConfig:
         candidate_k=int(raw["candidate_k"]),
         top_n=int(raw["top_n"]),
         shortlist_size=max(int(raw["top_n"]), int(os.getenv("SHORTLIST_SIZE") or raw["shortlist_size"])),
+        fairness=FairnessLevels(**{k: float(v) for k, v in raw["fairness_levels"].items()}),
+        picks=PickRules(tolerance_score=float(raw["picks"]["tolerance_score"]),
+                        max_extra_minutes=float(raw["picks"]["max_extra_minutes"]),
+                        quality_top_n=int(raw["picks"]["quality_top_n"])),
     )
 
 

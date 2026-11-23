@@ -17,7 +17,7 @@ import json
 import logging
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -139,6 +139,26 @@ def _realtime_ref(td: dict, line: dict, vehicle: str, dep: dict, arr: dict) -> d
 
 def _parse_time(text: str | None) -> datetime | None:
     return datetime.fromisoformat(text.replace("Z", "+00:00")) if text else None
+
+
+def rebase_to_meeting_date(route: Route, meeting_time: datetime) -> Route:
+    """캐시·저장본은 (요일, 시간대)가 같으면 날짜가 달라도 재사용하므로, 저장된 시각의 날짜를 이번 약속 날짜로 옮긴다.
+
+    (옮기지 않으면 몇 주 전 날짜가 화면에 나오고 "약속보다 N분 일찍 도착" 같은 계산이 어긋난다.) 소요시간은 그대로다.
+    """
+    if not route.arrival_time:
+        return route
+    arrival = datetime.fromisoformat(route.arrival_time)
+    days = (meeting_time.astimezone(arrival.tzinfo).date() - arrival.date()).days
+    if days == 0:
+        return route
+    shift = timedelta(days=days)
+
+    def moved(value: str | None) -> str | None:
+        return (datetime.fromisoformat(value) + shift).isoformat(timespec="seconds") if value else value
+
+    segments = tuple(replace(s, departure_time=moved(s.departure_time), arrival_time=moved(s.arrival_time)) for s in route.segments)
+    return replace(route, segments=segments, departure_time=moved(route.departure_time), arrival_time=moved(route.arrival_time))
 
 
 def convert_route(response: dict, origin: Coord, destination: Coord, utc_offset_hours: int = 9) -> Route:
@@ -409,4 +429,4 @@ class GoogleRouteProvider(RouteProvider):
                 self.client.store.put(key, route_to_dict(route))
             return route
 
-        return self._flight.do(key, fetch)
+        return rebase_to_meeting_date(self._flight.do(key, fetch), meeting_time)

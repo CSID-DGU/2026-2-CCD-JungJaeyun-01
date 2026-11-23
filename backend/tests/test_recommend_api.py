@@ -384,3 +384,14 @@ def test_search_places_requires_query_and_maps_errors(client):
 def test_search_places_without_key_fails_cleanly():
     with pytest.raises(PlaceLookupError):
         KakaoPlaceLookupService("").search("강남")
+
+
+def test_response_has_fairness_labels_and_the_two_picks(full_client):
+    body = post_full(full_client).json()
+    for region in body["regions"]:
+        assert region["fairness"]["level"] in ("high", "mid", "low") and region["fairness"]["label"] in ("높음", "보통", "낮음")
+        assert region["fairness"]["gap_minutes"] >= 0 and region["place_quality"] is not None
+    picks = body["meta"]["picks"]
+    ranks = {r["rank"] for r in body["regions"]}
+    assert picks["fair_rank"] == 1 and picks["satisfaction_rank"] in ranks
+    assert picks["differs"] == (picks["satisfaction_rank"] != picks["fair_rank"]) and picks["summary"]

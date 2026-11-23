@@ -17,3 +17,16 @@ shortlist_size: 8
 
 # 최종적으로 응답에 포함할 상위 지역 수
 top_n: 3
+
+# 화면에 보이는 "이동 공정성 높음/보통/낮음": 가장 오래 걸리는 사람과 가장 적게 걸리는 사람의 이동시간 차이(분).
+# (잠정값. 05-evaluation-plan.md의 사용자 평가로 조정한다. 평가 실험에서 MeetPick 추천은 2~3명일 때 차이 3분 안팎, 대표 번화가는 20분 이상이었다)
+fairness_levels:
+  high_gap_max: 5
+  mid_gap_max: 12
+
+# 공정성(RegionScore)과 장소 만족도가 갈릴 때의 규칙 (scoring/picks.py, docs/evaluation/07-conflict-rule.md)
+#   공평 추천 = RegionScore 1위, 장소 만족 추천 = 아래 한도 안에서 장소 만족도가 가장 높은 지역
+picks:
+  tolerance_score: 0.10     # RegionScore가 1위보다 이만큼 넘게 낮은 지역은 제외
+  max_extra_minutes: 8      # 최대 이동시간이 1위보다 이만큼 넘게 긴 지역은 제외
+  quality_top_n: 3          # 장소 만족도 = 지역 안 상위 N곳 PlaceScore 평균

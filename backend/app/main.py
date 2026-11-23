@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import settings
 from app.routers import auth, diagnostics, realtime, recommend, search
+from app.static_site import mount_frontend
 
 # 앱 로그(추정 vs 실제 차이, 순위 변경, 경로 API 호출·오류)를 INFO까지 콘솔에 남긴다. uvicorn은 자기 로거만 설정한다.
 _app_logger = logging.getLogger("app")
@@ -39,3 +40,7 @@ app.include_router(auth.share_router)
 def health() -> dict:
     return {"status": "ok", "mock": {"places": settings.MOCK_PLACES, "ratings": settings.MOCK_RATINGS, "routes": settings.MOCK_ROUTES}, "route_provider": settings.ROUTE_PROVIDER,
             "route_mode": settings.ROUTE_MODE}
+
+
+# 실행 패키지(frontend/dist가 있을 때): 같은 서버가 화면도 내준다. 반드시 모든 API 라우트를 등록한 뒤에 부른다.
+mount_frontend(app, settings.ROOT_DIR / "frontend" / "dist")

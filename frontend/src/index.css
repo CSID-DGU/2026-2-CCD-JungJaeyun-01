@@ -1559,3 +1559,10 @@ a.btn { display: inline-block; text-decoration: none; }
   white-space: nowrap;
 }
 .auth-user > span, .auth-user { white-space: nowrap; }
+
+.friend-tools { flex-wrap: wrap; align-items: end; gap: .45rem; margin: .7rem 0; }
+.alternative { background: #f0f6f3; border-radius: 14px; padding: 12px 16px; }
+.alternative h3 { margin: 0 0 .45rem; }
+.alternative button { white-space: normal; text-align: left; }
+.bars details { padding: 12px; }
+.bars summary { cursor: pointer; }

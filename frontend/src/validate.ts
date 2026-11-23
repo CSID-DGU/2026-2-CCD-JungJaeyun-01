@@ -1,6 +1,8 @@
 import type { AgeGroup, PlaceHit, RecommendRequest, Purpose } from './types'
 
 export interface FormParticipant {
+  transport?: "transit" | "car"
+  friendId?: string
   key: number
   name: string
   age: AgeGroup

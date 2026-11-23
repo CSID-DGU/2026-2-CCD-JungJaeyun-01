@@ -8,7 +8,7 @@ export const SHARE_PARAM = 's'
 interface Shared {
   v: 1
   /** [이름, 위도, 경도, 연령대, 출발지 이름, 출발지 주소] */
-  p: [string, number, number, AgeGroup, string, string][]
+  p: [string, number, number, AgeGroup, string, string, ("car" | "transit")?][]
   u: Purpose
   /** 약속 시간 'YYYY-MM-DDTHH:mm' (서울 시각) */
   t: string
@@ -29,7 +29,7 @@ const b64 = {
 export function buildShareUrl(input: SharedInput, origin = window.location.origin): string {
   const payload: Shared = {
     v: 1,
-    p: input.participants.map((p) => [p.name, p.origin!.lat, p.origin!.lng, p.age, p.origin!.name, p.origin!.address]),
+    p: input.participants.map((p) => [p.name, p.origin!.lat, p.origin!.lng, p.age, p.origin!.name, p.origin!.address, p.transport ?? 'transit']),
     u: input.purpose,
     t: input.meetingTime,
   }
@@ -49,7 +49,7 @@ export function parseShareParam(value: string | null): SharedInput | null {
       const [name, lat, lng, age, placeName, address] = row
       if (typeof name !== 'string' || !Number.isFinite(lat) || !Number.isFinite(lng) || !ages.includes(age)) return null
       participants.push({
-        key: i + 1, name: name.slice(0, 20), age,
+        transport: row[6] === 'car' ? 'car' : 'transit', key: i + 1, name: name.slice(0, 20), age,
         origin: { id: `shared-${i}`, name: String(placeName ?? ''), address: String(address ?? ''), category: '', lat, lng },
       })
     }

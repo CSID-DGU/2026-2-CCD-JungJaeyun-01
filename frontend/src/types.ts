@@ -12,6 +12,7 @@ export interface PlaceHit {
 }
 
 export interface RecommendRequest {
+  recent_regions?: string[]
   participants: { name: string; lat: number; lng: number; age_group: AgeGroup }[]
   purpose: Purpose
   /** 약속 시간 (KST ISO 8601). 이 시각에 도착하는 기준으로 경로를 구한다. */
@@ -72,6 +73,7 @@ export interface Route {
 }
 
 export interface RouteResponse {
+  fewer?: Route | null
   route: Route
   /** 추정 경로일 때 이유 */
   note: string | null
@@ -86,6 +88,7 @@ export interface ParticipantTravel {
 }
 
 export interface Place {
+  opening?: string | null
   rank: number
   id: string
   name: string

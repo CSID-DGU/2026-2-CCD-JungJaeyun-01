@@ -7,3 +7,4 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+interface Window { meetpickKakaoKey?: string }

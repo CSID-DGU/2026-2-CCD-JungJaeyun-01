@@ -1,4 +1,5 @@
 import { Beer, Coffee, MapPin, Plus, SearchX, Utensils, type LucideIcon } from 'lucide-react'
+import { useState } from 'react'
 import { BRAND } from '../brand'
 import {
   AGE_OPTIONS,
@@ -39,6 +40,22 @@ const initialOf = (name: string, i: number) => [...name.trim()][0] ?? String(i +
 
 export default function InputForm(props: Props) {
   const { participants, purpose, meetingTime, meetingError, errors, loading, submitError } = props
+  type Friend = Pick<FormParticipant, 'name' | 'origin'> & { id: string }
+  const [friends, setFriends] = useState<Friend[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('meetpick.friends') ?? '[]')
+      return Array.isArray(saved) ? saved.filter(f => f?.id && f.origin && Number.isFinite(f.origin.lat) && Number.isFinite(f.origin.lng)) : []
+    } catch { return [] }
+  })
+  const [saveError, setSaveError] = useState('')
+  function persist(list: Friend[]) {
+    try {
+      localStorage.setItem('meetpick.friends', JSON.stringify(list))
+      setFriends(list)
+      setSaveError('')
+      return true
+    } catch { setSaveError('이 브라우저에 즐겨찾기를 저장할 수 없어요.'); return false }
+  }
   const count = participants.length
 
   const peopleReady = participants.every((p) => p.name.trim() && p.origin)
@@ -119,6 +136,34 @@ export default function InputForm(props: Props) {
                   </select>
                 </label>
               </div>
+              <div className="row friend-tools">
+                <label className="field">친구 즐겨찾기
+                  <select value={p.friendId ?? ''} onChange={e => {
+                    const friend = friends.find(f => f.id === e.target.value)
+                    props.onChangeParticipant(p.key, friend
+                      ? {friendId: friend.id, name: friend.name, origin: friend.origin}
+                      : {friendId: undefined})
+                  }}>
+                    <option value="">직접 입력</option>
+                    {friends.map(f => <option key={f.id} value={f.id}>{f.name} · {f.origin?.name}</option>)}
+                  </select>
+                </label>
+                <button type="button" className="btn ghost" disabled={!p.name.trim() || !p.origin} onClick={() => {
+                  const id = p.friendId || String(Date.now())
+                  if (persist([...friends.filter(f => f.id !== id), { id, name: p.name.trim(), origin: p.origin }]))
+                    props.onChangeParticipant(p.key, {friendId: id})
+                }}>{p.friendId ? '친구 수정 저장' : '친구 저장'}</button>
+                {p.friendId && <button type="button" className="btn ghost" onClick={() => {
+                  if (persist(friends.filter(f => f.id !== p.friendId)))
+                    participants.filter(other => other.friendId === p.friendId).forEach(other => props.onChangeParticipant(other.key, {friendId: undefined}))
+                }}>즐겨찾기 삭제</button>}
+                <label className="field">이동수단
+                  <select value={p.transport ?? 'transit'} onChange={e => props.onChangeParticipant(p.key, {transport: e.target.value === 'car' ? 'car' : 'transit'})}>
+                    <option value="transit">대중교통</option><option value="car">자동차</option>
+                  </select>
+                </label>
+              </div>
+              {saveError && <p role="alert">{saveError}</p>}
               {err?.name && <p className="field-error">{err.name}</p>}
 
               <div className="field">
@@ -168,7 +213,7 @@ export default function InputForm(props: Props) {
         </div>
         <p className="transport">
           이동수단 <span className="chip">대중교통</span>
-          <small>현재 대중교통만 지원해요</small>
+          <small>지역 순위는 모든 참여자의 대중교통 이동시간을 기준으로 계산해요.</small>
         </p>
 
         <div className="field meeting">

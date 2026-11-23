@@ -47,7 +47,7 @@ interface Props {
   onToggleView: () => void
 }
 
-const APP_KEY = import.meta.env.VITE_KAKAO_JS_KEY ?? ''
+const APP_KEY = window.meetpickKakaoKey ?? ''
 const BASE_PADDING = 70
 const DROP_STAGGER_MS = 120
 const POP_STAGGER_MS = 60

@@ -395,3 +395,26 @@ def test_response_has_fairness_labels_and_the_two_picks(full_client):
     ranks = {r["rank"] for r in body["regions"]}
     assert picks["fair_rank"] == 1 and picks["satisfaction_rank"] in ranks
     assert picks["differs"] == (picks["satisfaction_rank"] != picks["fair_rank"]) and picks["summary"]
+
+
+def test_repeat_meeting_returns_another_comparable_region(client):
+    use(FakeProvider())
+    request = {"participants": [HONGDAE, JAMSIL], "purpose": "meal", "recent_regions": []}
+    first = client.post("/api/recommend/regions", json=request).json()["regions"]
+    request["recent_regions"] = [r["station"]["id"] for r in first]
+    second = client.post("/api/recommend/regions", json=request).json()["regions"]
+    assert len(second) == len(first) == 4
+    assert first[:3] == second[:3]
+    assert second[3]["station"]["id"] not in request["recent_regions"]
+
+
+def test_opening_at_meeting_time():
+    from datetime import datetime
+    from app.services.opening import opening_status, KST
+    schedule = {"retrieved": "2026-11-20", "regular": {"periods": [
+        {"open": {"day": 6, "hour": 11}, "close": {"day": 6, "hour": 15}},
+        {"open": {"day": 6, "hour": 17}, "close": {"day": 0, "hour": 2}},
+    ]}}
+    for day, hour, expected in [(28, 12, "영업 예상"), (28, 16, "영업시간 외 예상"),
+                                (29, 1, "영업 예상"), (29, 2, "영업시간 외 예상")]:
+        assert opening_status(schedule, datetime(2026, 11, day, hour, tzinfo=KST)) == expected

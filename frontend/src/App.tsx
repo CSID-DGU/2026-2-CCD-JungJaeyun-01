@@ -22,6 +22,20 @@ const initialParticipants = (): FormParticipant[] => [
   { key: 2, name: '참여자 2', age: '20s', origin: null },
 ]
 
+function historyKey(people: FormParticipant[]) {
+  return 'meetpick.regions.' + JSON.stringify(people.map(p =>
+    [p.name.trim(), p.origin?.lat.toFixed(2), p.origin?.lng.toFixed(2)].join('|')).sort())
+}
+function history(people: FormParticipant[]): string[] {
+  try {
+    const ids = JSON.parse(localStorage.getItem(historyKey(people)) ?? '[]')
+    return Array.isArray(ids) ? ids.filter(id => typeof id === 'string').slice(-64) : []
+  } catch { return [] }
+}
+function remember(people: FormParticipant[], ids: string[]) {
+  const merged = [...history(people).filter(id => !ids.includes(id)), ...ids].slice(-64)
+  try { localStorage.setItem(historyKey(people), JSON.stringify(merged)) } catch { /* private browsing */ }
+}
 function App() {
   const nextKey = useRef(3)
   const motionId = useRef(0)
@@ -106,7 +120,9 @@ function App() {
       if (!current || !region) return
       const jobs = indexes.map((i) => {
         const key = routeKey(region.station.id, i)
-        if (routesRef.current[key]?.status === 'ok') return Promise.resolve()
+        if (people[i]?.transport === 'car') return Promise.resolve()
+        const cached = routesRef.current[key]
+        if (cached?.status === 'ok' && !(explicit && cached.route.source === 'estimate')) return Promise.resolve()
         if (region.participants[i]?.is_estimated && !explicit) return Promise.resolve()
         const inFlight = pending.current.get(key)
         if (inFlight) return inFlight
@@ -115,14 +131,15 @@ function App() {
         setEntry(key, { status: 'loading' })
         const job = fetchRoute(origin.lat, origin.lng, region.station.id, current.meta.meeting_time)
           .then((res) => {
-            setEntry(key, { status: 'ok', route: res.route, note: res.note })
+            if (latest.current.data !== current) return
+            setEntry(key, { status: 'ok', route: res.route, other: res.fewer, note: res.note })
             // 지도에서 그리기가 시작되지 않더라도(이동이 취소된 경우 등) 타임라인이 영영 숨지 않도록
             setTimeout(() => setPlays((prev) => (prev[key] ? prev : { ...prev, [key]: { token: Date.now(), delayMs: 0 } })), 2500)
           })
-          .catch((e: unknown) =>
-            setEntry(key, { status: 'error', message: e instanceof Error ? e.message : '경로를 불러오지 못했어요.' }),
-          )
-          .finally(() => pending.current.delete(key))
+          .catch((e: unknown) => {
+            if (latest.current.data === current) setEntry(key, { status: 'error', message: e instanceof Error ? e.message : '경로를 불러오지 못했어요.' })
+          })
+          .finally(() => { if (pending.current.get(key) === job) pending.current.delete(key) })
         pending.current.set(key, job)
         return job
       })
@@ -153,6 +170,8 @@ function App() {
 
   const selectRegion = useCallback(
     async (index: number) => {
+      const selected = latest.current.data?.regions[index]
+      if (selected) remember(latest.current.participants, [selected.station.id])
       setSelectedRegion(index)
       setSelectedPlaceId(null)
       setSegmentFocus(null)
@@ -272,7 +291,8 @@ function App() {
   async function search(input: FormParticipant[], purposeValue: Purpose, meeting: string) {
     setLoading(true)
     try {
-      const result = await recommend(toRequest(input, purposeValue, toMeetingIso(meeting)))
+      const result = await recommend({...toRequest(input, purposeValue, toMeetingIso(meeting)), recent_regions: history(input)})
+      remember(input, result.regions.map(r => r.station.id))
       setSubmitted({ participants: input, purpose: purposeValue, meetingTime: meeting })
       resetRoutes() // 참여자·지역·약속 시간이 바뀌었을 수 있으니 이전 경로는 버린다
       setData(result)
@@ -363,6 +383,16 @@ function App() {
             {notice && <p className="route-hint notice">{notice}</p>}
         {data && share ? (
           <ResultPanel
+            people={participants}
+            swapRoute={(index) => {
+              const key = routeKey(data.regions[selectedRegion].station.id, index)
+              const e = routesRef.current[key]
+              if (e?.status === 'ok' && e.other) {
+                setEntry(key, {...e, route: e.other, other: e.route})
+                setSegmentFocus(null)
+                bumpMotion('route')
+              }
+            }}
             data={data}
             selectedRegion={selectedRegion}
             selectedPlaceId={selectedPlaceId}

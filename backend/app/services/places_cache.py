@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS google_ratings (
     review_count INTEGER,
     created_at   TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS opening_hours (place_id TEXT PRIMARY KEY, payload TEXT);
 CREATE TABLE IF NOT EXISTS google_usage (
     day   TEXT PRIMARY KEY,
     count INTEGER NOT NULL
@@ -86,6 +87,15 @@ class PlacesCache:
                 "INSERT OR REPLACE INTO google_ratings VALUES (?, ?, ?, ?)",
                 (place_id, rating, review_count, _now().isoformat()),
             )
+
+    def hours(self, place_id):
+        with self._connect() as conn:
+            row = conn.execute("SELECT payload FROM opening_hours WHERE place_id=?", (place_id,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def save_hours(self, place_id, schedule):
+        with self._connect() as conn:
+            conn.execute("INSERT OR REPLACE INTO opening_hours VALUES (?,?)", (place_id, json.dumps(schedule)))
 
     # --- 구글 일일 호출 수 -------------------------------------------------
     def usage(self, day: str) -> int:

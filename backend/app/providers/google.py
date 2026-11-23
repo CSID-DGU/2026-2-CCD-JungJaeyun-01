@@ -411,6 +411,25 @@ class GoogleRouteProvider(RouteProvider):
         return result
 
     # --- 참여자 이름을 눌렀을 때: 상세 경로 -------------------------------------------
+    def options(self, origin, destination, meeting_time):
+        key = f"alternatives|{coord_key(origin)}|{destination.id}|{meeting_time.isoformat()}"
+        def fetch():
+            cached = self.client.store.get(key, self.s.cache_ttl_days) if self.mode == "live" else None
+            if cached:
+                return [route_from_dict(r) for r in cached["options"]]
+            body = {**self._body(meeting_time), "origin": _waypoint(origin)["waypoint"],
+                    "destination": _waypoint(destination.coord)["waypoint"], "languageCode": "ko",
+                    "computeAlternativeRoutes": True}
+            response = self.client.call("route", key, ROUTES_URL, body, ROUTES_FIELD_MASK)
+            routes = [convert_route({"routes": [r]}, origin, destination.coord, self.s.utc_offset_hours)
+                      for r in response.get("routes", [])]
+            if not routes:
+                raise RouteUnavailable("경로 후보가 없어요")
+            if self.mode == "live":
+                self.client.store.put(key, {"options": [route_to_dict(r) for r in routes]})
+            return routes
+        return self._flight.do(key, fetch)
+
     def route(self, origin: Coord, destination: Station, meeting_time: datetime) -> Route:
         key = f"r|{coord_key(origin)}|{destination.id}|{time_band(meeting_time)}"
         use_cache = self.client.mode == "live"

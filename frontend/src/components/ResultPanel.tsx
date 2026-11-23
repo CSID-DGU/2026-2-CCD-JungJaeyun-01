@@ -12,7 +12,12 @@ import ShareBar from './ShareBar'
 import { FairnessBadge, PicksBanner, PlaceScoreExplain, RegionScoreExplain } from './ScoreExplain'
 import StateMessage from './StateMessage'
 
+import type { FormParticipant } from '../validate'
+import CarRow from './CarRow'
+
 interface Props {
+  people: FormParticipant[]
+  swapRoute: (index: number) => void
   data: RecommendResponse
   selectedRegion: number
   selectedPlaceId: string | null
@@ -167,6 +172,7 @@ function RouteDetail({ entry, travel, index, color, origin, destinationName, mee
 }
 
 function TravelBars({
+  people, swapRoute,
   region,
   maxMinutes,
   routeSelection,
@@ -180,6 +186,8 @@ function TravelBars({
   onLoadRoute,
   liveMode,
 }: {
+  people: FormParticipant[]
+  swapRoute: (index: number) => void
   region: Region
   maxMinutes: number
   routeSelection: RouteSelection
@@ -208,6 +216,11 @@ function TravelBars({
       </div>
       <ul className="bars" aria-label="참여자별 이동시간" key={region.station.id}>
         {region.participants.map((p, i) => {
+          const person = people[i]
+          if (person?.transport === 'car' && person.origin)
+            return <CarRow key={region.station.id + i} person={person} stationId={region.station.id} />
+          const detail = routes[routeKey(region.station.id, i)]
+          const loaded = detail?.status === 'ok' ? detail : null
           const open = routeSelection === 'all' || routeSelection === i
           return (
             <li key={`${p.name}-${i}`} className={open ? 'open' : ''}>
@@ -241,10 +254,14 @@ function TravelBars({
                 <span className="bar-value">
                   {fmt(shownMinutes(p, routes[routeKey(region.station.id, i)]))}분{p.is_estimated && <em className="badge">추정</em>}
                 </span>
+                {loaded && <small>{loaded.route.segments.filter(s => s.mode !== 'WALK').map(s => s.lineName).filter(Boolean).join(' → ') || '도보'} · 환승 {loaded.route.transfers}회</small>}
                 <span className="route-cta" aria-hidden="true">{open ? '경로 닫기 ▴' : '경로 보기 ›'}</span>
               </button>
               <div className="route-detail" aria-hidden={!open}>
                 <div className="route-detail-inner">
+                  {open && loaded?.other && <button type="button" className="btn ghost" onClick={() => swapRoute(i)}>
+                    {loaded.other.transfers < loaded.route.transfers ? '환승이 적은 경로' : '시간이 짧은 경로'} · {loaded.other.totalMinutes}분 · 환승 {loaded.other.transfers}회
+                  </button>}
                   <RouteDetail
                     entry={open ? routes[routeKey(region.station.id, i)] : undefined}
                     travel={p}
@@ -319,12 +336,14 @@ function PlaceCard({ place, selected, onSelect }: { place: Place; selected: bool
       <a className="place-link" href={kakaoPlaceUrl(place)} target="_blank" rel="noopener">
         카카오맵에서 보기 ↗
       </a>
+      {place.opening && <p>약속 시간 · {place.opening}</p>}
       <PlaceScoreExplain place={place} />
     </li>
   )
 }
 
 export default function ResultPanel({
+  people, swapRoute,
   data,
   selectedRegion,
   selectedPlaceId,
@@ -365,7 +384,7 @@ export default function ResultPanel({
           ← 조건 다시 입력
         </button>
         <span className="chip">
-          {purposeLabel} · {region.participants.length}명 · 대중교통
+          {purposeLabel} · {region.participants.length}명 · 지역 순위는 대중교통 기준
         </span>
       </header>
 
@@ -382,8 +401,17 @@ export default function ResultPanel({
 
       <PicksBanner picks={data.meta.picks} regions={data.regions} onSelect={onSelectRegion} />
 
+      <section className="alternative"><h3>여긴 어때요?</h3>
+        {data.regions[3] ? <button type="button" className="btn ghost" aria-pressed={selectedRegion === 3} onClick={() => onSelectRegion(3)}>
+          {data.regions[3].station.name} · 공평 추천 대비 {[
+            ['평균', data.regions[3].metrics.avg_minutes - data.regions[0].metrics.avg_minutes],
+            ['최대', data.regions[3].metrics.max_minutes - data.regions[0].metrics.max_minutes],
+            ['시간 격차', data.regions[3].fairness.gap_minutes - data.regions[0].fairness.gap_minutes],
+          ].map(([label, diff]) => label + ' ' + (Number(diff) > 0 ? '+' : '') + Number(diff).toFixed(1) + '분').join(' · ')}
+        </button> : <p>이동 부담이 비슷한 다른 후보가 없어요.</p>}
+      </section>
       <div className="tabs" role="tablist" aria-label="추천 지역" data-count={data.regions.length}>
-        {data.regions.map((r, i) => (
+        {data.regions.slice(0, 3).map((r, i) => (
           <button
             key={r.station.id}
             type="button"
@@ -418,7 +446,7 @@ export default function ResultPanel({
         <p className="reason bubble">{region.reason}</p>
         <RegionScoreExplain region={region} weights={data.meta.weights} />
 
-        <TravelBars
+        <TravelBars people={people} swapRoute={swapRoute}
           region={region}
           maxMinutes={maxMinutes}
           routeSelection={routeSelection}
@@ -457,7 +485,7 @@ export default function ResultPanel({
           </StateMessage>
         ) : (
           <ul>
-            {region.places.map((p) => (
+            {[...region.places].sort((a,b) => Number(b.opening === '영업 예상') - Number(a.opening === '영업 예상')).map((p) => (
               <PlaceCard
                 key={p.id}
                 place={p}

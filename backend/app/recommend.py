@@ -149,7 +149,23 @@ def recommend_regions(
     pool = f"실제 경로 기준 후보 {len(scores)}곳 중" if used_actual else f"추정 기준 후보 {len(candidates)}곳 중"
     if used_actual:
         _log_rank_changes(scores[: config.top_n], stage1_rank, estimates, by_id)
-    scores = scores[: config.top_n]
+    main = scores[:config.top_n]
+    if main and request.recent_regions is not None:
+        best = main[0]
+        extra = config.picks.max_extra_minutes
+        def gap(r):
+            return max(r.minutes) - min(r.minutes)
+        shown_names = {by_id[r.region_id].name for r in main}
+        alternatives = [r for r in scores[config.top_n:]
+                        if by_id[r.region_id].name not in shown_names
+                        and r.metrics.avg <= best.metrics.avg + extra
+                        and r.metrics.max <= best.metrics.max + extra
+                        and gap(r) <= gap(best) + extra]
+        if alternatives:
+            # The history runs oldest to newest. Stable ranking breaks ties.
+            recent = {rid: i for i, rid in enumerate(request.recent_regions)}
+            main.append(min(alternatives, key=lambda r: recent.get(r.region_id, -1)))
+    scores = main
 
     regions = []
     fairness_labels = {"high": "높음", "mid": "보통", "low": "낮음"}

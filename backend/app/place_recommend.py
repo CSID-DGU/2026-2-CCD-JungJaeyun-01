@@ -29,6 +29,7 @@ from app.scoring.place import (
     score_place,
 )
 from app.services.place_search import Place, PlaceSearchError, PlaceService
+from app.services.opening import opening_status
 from app.services.rating import RatingResult, RatingService
 from app.providers.base import RouteProvider
 from app.subway import TravelEstimator
@@ -57,6 +58,7 @@ def rank_places(
     place_config: PlaceConfig,
     rating_service: RatingService,
     rating_counts: Counter,
+    meeting_time=None,
 ) -> list[PlaceOut]:
     """후보 장소를 평점 없이 1차 점수화 → 상위 N곳만 평점 조회 → 평점 포함 최종 점수로 정렬."""
     rule = place_config.purposes[request.purpose]
@@ -89,6 +91,7 @@ def rank_places(
     out = []
     for rank, (place, result, rating) in enumerate(sorted(final, key=_sort_key), 1):
         out.append(PlaceOut(
+            opening=opening_status(rating.hours, meeting_time) if request.purpose == "meal" else None,
             rank=rank, id=place.id, name=place.name, category=place.category_name,
             address=place.address, lat=place.lat, lng=place.lng, distance_m=place.distance_m,
             url=place.url, phone=place.phone, score=round(result.score, 4),
@@ -145,7 +148,7 @@ def recommend_with_places(
         station = by_id[region.station.id]
         try:
             places = place_service.search_nearby(station, rule.category_code)
-            ranked = rank_places(places, station, request, place_config, rating_service, rating_counts)
+            ranked = rank_places(places, station, request, place_config, rating_service, rating_counts, meeting_time)
             if not ranked:
                 warnings.append(f"{station.name}: 조건에 맞는 장소가 없습니다.")
         except PlaceSearchError as e:
@@ -155,7 +158,7 @@ def recommend_with_places(
         regions.append(RegionWithPlacesOut(**region.model_dump(), places=ranked,
                                            place_quality=round(quality, 4) if quality is not None else None))
 
-    picks = build_picks(regions, region_config)
+    picks = build_picks(regions[:region_config.top_n], region_config)
 
     age = place_config.age
     return RecommendResponse(

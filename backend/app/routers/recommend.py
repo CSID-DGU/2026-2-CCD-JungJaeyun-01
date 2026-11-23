@@ -94,6 +94,17 @@ def post_route(
     origin = Coord(request.lat, request.lng)
     meeting_time = meeting_time_of(request.meeting_time)
     try:
+        if request.alternatives and hasattr(provider, "options"):
+            try:
+                options = provider.options(origin, station, meeting_time)
+            except RouteUnavailable:
+                options = []
+            if options:
+                fastest = min(options, key=lambda r: (r.total_minutes, r.transfers))
+                fewest = min(options, key=lambda r: (r.transfers, r.total_minutes))
+                def output(r):
+                    return RouteOut.model_validate(route_to_dict(apply_line_colors(enrich_route_stops(r, load_network()))))
+                return RouteResponse(route=output(fastest), fewer=output(fewest) if fewest != fastest else None)
         route = apply_line_colors(enrich_route_stops(provider.route(origin, station, meeting_time), load_network()))
         return RouteResponse(route=RouteOut.model_validate(route_to_dict(route)))
     except RouteUnavailable as e:
@@ -112,3 +123,24 @@ def get_usage(store: RoutesStore = Depends(get_routes_store), provider: RoutePro
         "day": today(), "provider": provider.name, "mode": settings.ROUTE_MODE,
         "counters": store.usage(),  # matrix, route, cache_hit, replay_hit, replay_miss, error, odsay
     }
+
+
+@route_router.post("/drive")
+def drive(request: RouteRequest, stations: tuple[Station, ...] = Depends(get_stations)):
+    import httpx2 as httpx
+    station = next((s for s in stations if s.id == request.station_id), None)
+    if station is None:
+        raise HTTPException(404, "알 수 없는 도착역입니다.")
+    if not settings.KAKAO_REST_API_KEY:
+        raise HTTPException(503, "카카오 REST 키 설정이 필요해요.")
+    try:
+        response = httpx.get("https://apis-navi.kakaomobility.com/v1/directions",
+                             headers={"Authorization": "KakaoAK " + settings.KAKAO_REST_API_KEY},
+                             params={"origin": f"{request.lng},{request.lat}",
+                                     "destination": f"{station.coord.lng},{station.coord.lat}",
+                                     "summary": "true"}, timeout=8)
+        response.raise_for_status()
+        summary = response.json()["routes"][0]["summary"]
+        return {"minutes": round(summary["duration"] / 60), "taxi": (summary.get("fare") or {}).get("taxi")}
+    except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError):
+        raise HTTPException(503, "자동차 경로를 조회할 수 없어요. 카카오모빌리티 권한과 경로를 확인해 주세요.")

@@ -24,7 +24,7 @@ function loadSdk(): Promise<any> {
 }
 
 export async function shareToKakaoTalk(text: string, url: string): Promise<void> {
-  const key = import.meta.env.VITE_KAKAO_JS_KEY
+  const key = window.meetpickKakaoKey
   if (!key) throw new Error('VITE_KAKAO_JS_KEY가 .env에 없어서 카카오톡 공유를 쓸 수 없어요.')
   const Kakao = await loadSdk()
   if (!Kakao.isInitialized()) Kakao.init(key)

@@ -61,7 +61,7 @@ class TestGoogleRating:
         svc, client = google(tmp_path, FakeResponse(GOOD))
         svc.get_rating(PLACE, STATION.name)
         sent = client.requests[0]
-        assert sent["headers"]["X-Goog-FieldMask"] == "places.displayName,places.rating,places.userRatingCount"
+        assert sent["headers"]["X-Goog-FieldMask"] == "places.displayName,places.rating,places.userRatingCount,places.location,places.regularOpeningHours,places.currentOpeningHours"
         assert sent["json"]["pageSize"] == 1
 
     def test_missing_key_makes_no_call(self, tmp_path):
@@ -173,3 +173,19 @@ def test_default_services_are_real_not_mock(monkeypatch):
     finally:
         get_place_service.cache_clear()
         get_rating_service.cache_clear()
+
+
+def test_matched_restaurant_hours_are_cached_and_apply_to_meeting(tmp_path):
+    from datetime import datetime
+    from app.services.opening import KST, opening_status
+    found = dict(GOOD["places"][0], location={"latitude": PLACE.lat, "longitude": PLACE.lng},
+                 regularOpeningHours={"periods": [{"open": {"day": 6, "hour": 17},
+                                                    "close": {"day": 0, "hour": 2}}]})
+    svc, client = google(tmp_path, FakeResponse({"places": [found]}))
+    hours = svc.get_rating(PLACE, STATION.name).hours
+    assert opening_status(hours, datetime(2026, 11, 28, 19, tzinfo=KST)) == "영업 예상"
+    assert svc.get_rating(PLACE, STATION.name).hours == hours
+    assert len(client.requests) == 1
+    found["location"]["latitude"] += 0.1
+    different, _ = google(tmp_path / "different", FakeResponse({"places": [found]}))
+    assert different.get_rating(PLACE, STATION.name).hours is None

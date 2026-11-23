@@ -53,7 +53,7 @@ export function fetchRoute(lat: number, lng: number, stationId: string, meetingT
   return request('/api/route', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lat, lng, station_id: stationId, meeting_time: meetingTime }),
+    body: JSON.stringify({ lat, lng, station_id: stationId, meeting_time: meetingTime, alternatives: true }),
   })
 }
 

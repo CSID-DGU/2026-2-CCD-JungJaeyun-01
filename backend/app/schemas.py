@@ -17,6 +17,7 @@ class ParticipantIn(BaseModel):
 
 
 class RegionRecommendRequest(BaseModel):
+    recent_regions: list[str] | None = Field(default=None, max_length=64)
     participants: list[ParticipantIn] = Field(min_length=2, max_length=5)
     purpose: Purpose
     # 약속 시간. 없으면 다음 토요일 오후 6시(KST). 이 시각에 도착하는 기준으로 경로를 구한다.
@@ -152,6 +153,7 @@ class PlaceWeightsOut(BaseModel):
 
 
 class PlaceOut(BaseModel):
+    opening: str | None = None
     rank: int
     id: str
     name: str
@@ -248,6 +250,7 @@ class RouteOut(BaseModel):
 
 
 class RouteRequest(BaseModel):
+    alternatives: bool = False
     lat: float = Field(ge=33.0, le=39.0)
     lng: float = Field(ge=124.0, le=132.0)
     station_id: str
@@ -255,5 +258,6 @@ class RouteRequest(BaseModel):
 
 
 class RouteResponse(BaseModel):
+    fewer: RouteOut | None = None
     route: RouteOut
     note: str | None = None   # 추정 경로일 때 이유 등

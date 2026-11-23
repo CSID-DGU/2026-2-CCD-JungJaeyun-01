@@ -15,6 +15,9 @@ from typing import Callable
 
 import httpx2 as httpx
 
+from app.geo import Coord, haversine_km
+from app.services.opening import KST
+from datetime import datetime
 from app.services.place_search import Place
 from app.services.places_cache import PlacesCache
 
@@ -32,6 +35,7 @@ class RatingResult:
     rating: float | None
     review_count: int | None
     status: str
+    hours: dict | None = None
 
 
 class RatingService(ABC):
@@ -68,7 +72,7 @@ class GoogleRatingService(RatingService):
     source = "google"
     URL = "https://places.googleapis.com/v1/places:searchText"
     # 필요한 필드만 요청해 비용을 최소화한다 (rating, userRatingCount만 있어도 최상위 등급 요금이 적용됨).
-    FIELD_MASK = "places.displayName,places.rating,places.userRatingCount"
+    FIELD_MASK = "places.displayName,places.rating,places.userRatingCount,places.location,places.regularOpeningHours,places.currentOpeningHours"
 
     def __init__(
         self,
@@ -96,7 +100,7 @@ class GoogleRatingService(RatingService):
 
         cached = self.cache.get_rating(place.id, self.cache_ttl_days)
         if cached is not None:
-            return _result(*cached)
+            return _result(*cached, self.cache.hours(place.id))
 
         day = self._today()
         if self.cache.usage(day) >= self.daily_limit:
@@ -126,13 +130,23 @@ class GoogleRatingService(RatingService):
         rating = count = None
         if found and names_match(place.name, (found.get("displayName") or {}).get("text", "")):
             rating, count = found.get("rating"), found.get("userRatingCount")
+        schedule = None
+        if found:
+            location = found.get("location") or {}
+            normalize = lambda name: re.sub(r"[\W_]+", "", name.casefold())
+            if (normalize(place.name) == normalize(found.get("displayName", {}).get("text", ""))
+                    and "latitude" in location and "longitude" in location
+                    and haversine_km(Coord(place.lat, place.lng), Coord(location["latitude"], location["longitude"])) <= 0.1):
+                schedule = {"retrieved": datetime.now(KST).date().isoformat(),
+                            "regular": found.get("regularOpeningHours"), "current": found.get("currentOpeningHours")}
+        self.cache.save_hours(place.id, schedule)
         if rating is None or count is None:
             rating = count = None
         self.cache.set_rating(place.id, rating, count)  # '못 찾음'도 캐시해 같은 장소를 다시 조회하지 않는다
-        return _result(rating, count)
+        return _result(rating, count, schedule)
 
 
-def _result(rating: float | None, count: int | None) -> RatingResult:
+def _result(rating: float | None, count: int | None, hours=None) -> RatingResult:
     if rating is None or count is None:
-        return RatingResult(None, None, STATUS_NOT_FOUND)
-    return RatingResult(float(rating), int(count), STATUS_OK)
+        return RatingResult(None, None, STATUS_NOT_FOUND, hours)
+    return RatingResult(float(rating), int(count), STATUS_OK, hours)

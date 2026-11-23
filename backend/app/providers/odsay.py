@@ -149,6 +149,11 @@ class OdsayClient:
         best = min(paths, key=lambda p: p["info"]["totalTime"])
         return TravelResult(float(best["info"]["totalTime"]), parse_odsay_route(best, origin, station.coord))
 
+    def options(self, origin, station):
+        body = self._request_with_retry(origin, station)
+        parsed = [parse_odsay_route(p, origin, station.coord) for p in body.get("result", {}).get("path", [])]
+        return [r for r in parsed if r]
+
     def _request_with_retry(self, origin: Coord, station: Station) -> dict:
         if self._blocked_until is not None:
             if self._clock() < self._blocked_until:
@@ -194,6 +199,16 @@ class OdsayRouteProvider(RouteProvider):
 
     def __init__(self, client: OdsayClient, store: RoutesStore, cache_ttl_days: int = 7):
         self.client, self.store, self.ttl = client, store, cache_ttl_days
+
+    def options(self, origin, station, meeting_time):
+        key = self._key(origin, station) + "|options"
+        hit = self.store.get(key, self.ttl)
+        if hit:
+            return [route_from_dict(r) for r in hit["routes"]]
+        routes = self.client.options(origin, station)
+        if routes:
+            self.store.put(key, {"routes": [route_to_dict(r) for r in routes]})
+        return routes
 
     def _key(self, origin: Coord, station: Station) -> str:
         return f"odsay|{coord_key(origin)}|{station.id}"

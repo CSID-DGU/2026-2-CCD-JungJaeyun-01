@@ -30,3 +30,11 @@ def diagnose_kakao_map(
     """지도 SDK 로드가 실패했을 때 원인(도메인 미등록/키 오류/카카오맵 미사용 설정 등)을 알려준다."""
     result = diagnostics.check(origin)
     return MapDiagnosisOut(code=result.code, message=result.message)
+
+
+@router.get("/browser-config.js", include_in_schema=False)
+def browser_config():
+    import json
+    from fastapi.responses import Response
+    return Response("window.meetpickKakaoKey=" + json.dumps(settings.KAKAO_JS_KEY) + ";",
+                    media_type="application/javascript", headers={"Cache-Control": "no-store"})
